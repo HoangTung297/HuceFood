@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base theme -->
+    <style name="Theme.FoodOrder" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Màu chính -->
+        <item name="colorPrimary">@color/primary_color</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Màu phụ -->
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+
+        <!-- Màu nền -->
+        <item name="android:windowBackground">@color/background</item>
+
+        <!-- Màu cho các thành phần -->
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorError">#FF0000</item>
+    </style>
+
+    <!-- Splash screen theme -->
+    <style name="Theme.FoodOrder.Splash" parent="Theme.FoodOrder">
+        <item name="android:windowBackground">@drawable/ic_food_default</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
+</resources>

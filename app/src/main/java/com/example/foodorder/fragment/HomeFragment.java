@@ -44,7 +44,7 @@ public class HomeFragment extends Fragment {
 
         return view;
     }
-
+    // test
     private void initViews(View view) {
         bannerViewPager = view.findViewById(R.id.bannerViewPager);
         tabLayout = view.findViewById(R.id.tabLayout);

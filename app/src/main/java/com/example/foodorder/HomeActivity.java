@@ -1,5 +1,6 @@
 package com.example.foodorder;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -79,5 +80,23 @@ public class HomeActivity extends AppCompatActivity {
     // Xóa giỏ hàng
     public void clearCart() {
         cartList.clear();
+    }
+
+    // Chuyển đến ProfileFragment
+    public void navigateToProfile() {
+        bottomNavigation.setSelectedItemId(R.id.nav_profile);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 100 && resultCode == RESULT_OK) {
+            if (data != null) {
+                Food addedFood = (Food) data.getSerializableExtra("added_food");
+                if (addedFood != null) {
+                    addToCart(addedFood);
+                }
+            }
+        }
     }
 }

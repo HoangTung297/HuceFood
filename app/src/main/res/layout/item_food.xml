@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
     app:cardCornerRadius="8dp"
-    app:cardElevation="4dp">
+    app:cardElevation="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,6 +13,7 @@
         android:orientation="horizontal"
         android:padding="12dp">
 
+        <!-- Ảnh món ăn -->
         <ImageView
             android:id="@+id/ivFoodImage"
             android:layout_width="80dp"
@@ -21,53 +22,67 @@
             android:scaleType="centerCrop"
             android:layout_marginEnd="12dp"/>
 
+        <!-- Thông tin món ăn -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
 
+            <!-- Tên món ăn -->
             <TextView
                 android:id="@+id/tvFoodName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Tên món ăn"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"/>
 
+            <!-- Nhà hàng -->
             <TextView
                 android:id="@+id/tvFoodDescription"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Mô tả món ăn"
-                android:textSize="14sp"
-                android:maxLines="2"
+                android:text="Nhà hàng: ..."
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
                 android:ellipsize="end"/>
 
+            <!-- Danh mục (ở trên giá tiền) -->
             <TextView
                 android:id="@+id/tvFoodCategory"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Danh mục"
-                android:textSize="12sp"
-                android:textColor="@android:color/darker_gray"/>
+                android:textSize="11sp"
+                android:textColor="@android:color/darker_gray"
+                android:layout_marginTop="4dp"/>
 
+            <!-- Giá tiền (ở dưới danh mục) -->
             <TextView
                 android:id="@+id/tvFoodPrice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0 VNĐ"
-                android:textSize="16sp"
+                android:textSize="15sp"
+                android:textStyle="bold"
                 android:textColor="@color/primary_color"
-                android:textStyle="bold"/>
+                android:layout_marginTop="4dp"/>
+
         </LinearLayout>
 
+        <!-- Nút thêm -->
         <Button
             android:id="@+id/btnAddToCart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Thêm"
-            android:layout_gravity="center"/>
+            android:text="THÊM"
+            android:layout_gravity="center"
+            android:backgroundTint="@color/primary_color"/>
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

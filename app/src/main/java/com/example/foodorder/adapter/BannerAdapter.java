@@ -29,8 +29,26 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.BannerView
     @Override
     public void onBindViewHolder(@NonNull BannerViewHolder holder, int position) {
         Banner banner = bannerList.get(position);
+
+        // Hiển thị tiêu đề
         holder.tvTitle.setText(banner.getTitle());
-        // holder.ivBanner.setImageResource(R.drawable.banner_placeholder);
+
+        // Hiển thị ảnh theo imageUrl
+        String imageUrl = banner.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            // Thử tìm ảnh trong drawable theo tên
+            int resId = holder.itemView.getContext().getResources()
+                    .getIdentifier(imageUrl, "drawable", holder.itemView.getContext().getPackageName());
+
+            if (resId != 0) {
+                holder.ivBanner.setImageResource(resId);
+            } else {
+                // Ảnh mặc định nếu không tìm thấy
+                holder.ivBanner.setImageResource(R.drawable.ic_food_default);
+            }
+        } else {
+            holder.ivBanner.setImageResource(R.drawable.ic_food_default);
+        }
     }
 
     @Override

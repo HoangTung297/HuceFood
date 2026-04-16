@@ -1,6 +1,8 @@
 package com.example.foodorder.model;
 
-public class Banner {
+import java.io.Serializable;
+
+public class Banner implements Serializable {
     private int id;
     private String imageUrl;
     private String title;
@@ -11,27 +13,11 @@ public class Banner {
         this.title = title;
     }
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
+    public String getImageUrl() { return imageUrl; }
+    public String getTitle() { return title; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public void setId(int id) { this.id = id; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setTitle(String title) { this.title = title; }
 }

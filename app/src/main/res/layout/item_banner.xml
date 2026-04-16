@@ -10,16 +10,18 @@
         android:layout_height="160dp"
         android:scaleType="centerCrop"
         android:src="@drawable/ic_food_default"
-        android:background="#F5F5F5"/>
+        android:background="@color/primary_color"/>
 
     <TextView
         android:id="@+id/tvBannerTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Giảm 50%"
-        android:textSize="14sp"
+        android:text="Banner Title"
+        android:textSize="16sp"
         android:textStyle="bold"
-        android:gravity="center"/>
+        android:gravity="center"
+        android:textColor="@color/primary_color"
+        android:padding="8dp"/>
 
 </LinearLayout>

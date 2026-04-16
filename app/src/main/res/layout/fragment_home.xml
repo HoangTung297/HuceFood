@@ -19,10 +19,13 @@
             android:gravity="center_vertical">
 
             <LinearLayout
+                android:id="@+id/layoutAddress"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:clickable="true"
+                android:focusable="true">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -31,13 +34,27 @@
                     android:textSize="12sp"
                     android:textColor="@android:color/darker_gray"/>
 
-                <TextView
-                    android:id="@+id/tvAddress"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="📍"
-                    android:textSize="14sp"
-                    android:textStyle="bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvAddress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Chọn địa chỉ"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary_color"/>
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@drawable/ic_dropdown"
+                        android:layout_marginStart="4dp"/>
+                </LinearLayout>
             </LinearLayout>
 
             <ImageView
@@ -45,8 +62,52 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_profile"
-                android:background="@drawable/circle_background"/>
+                android:background="@drawable/circle_background"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="8dp"/>
         </LinearLayout>
+
+        <!-- Thanh tìm kiếm -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            app:cardCornerRadius="25dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_search"
+                    android:tint="@android:color/darker_gray"/>
+
+                <EditText
+                    android:id="@+id/etSearch"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Tìm kiếm món ăn..."
+                    android:background="@null"
+                    android:padding="8dp"
+                    android:inputType="text"/>
+
+                <ImageView
+                    android:id="@+id/ivClearSearch"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_close"
+                    android:tint="@android:color/darker_gray"
+                    android:visibility="gone"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
         <!-- Banner Slider -->
         <androidx.viewpager2.widget.ViewPager2
@@ -61,11 +122,11 @@
             android:layout_height="wrap_content"
             android:visibility="gone"/>
 
-        <!-- Voucher Section -->
+        <!-- Voucher -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🔥 Trùm Deal Ngon ShopeeFood"
+            android:text="🔥 Trùm Deal Ngon"
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"/>
@@ -76,20 +137,80 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"/>
 
-        <!-- Restaurant Section -->
+        <!-- Danh mục -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🍽️ Có thể bạn cũng thích"
+            android:text="📂 Danh mục"
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"/>
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvRestaurants"
+            android:id="@+id/rvCategories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Món ăn bán chạy -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔥 Món bán chạy nhất"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="16dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvBestSellers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Món gần tôi -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📍 Món gần tôi"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="16dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvNearby"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Món đánh giá cao -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⭐ Món đánh giá cao"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="16dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvTopRated"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Tất cả món ăn -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🍽️ Tất cả món ăn"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="16dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvAllFoods"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
 
     </LinearLayout>
 

@@ -10,14 +10,16 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Food;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
 
     private List<Food> foodList;
-    private OnItemClickListener listener;
-    private OnAddToCartClickListener cartListener;
+    private OnItemClickListener itemClickListener;
+    private OnAddToCartClickListener addToCartClickListener;
 
     public interface OnItemClickListener {
         void onItemClick(Food food);
@@ -27,23 +29,26 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder
         void onAddToCartClick(Food food);
     }
 
-    public FoodAdapter(List<Food> foodList, OnItemClickListener listener, OnAddToCartClickListener cartListener) {
+    public FoodAdapter(List<Food> foodList,
+                       OnItemClickListener itemClickListener,
+                       OnAddToCartClickListener addToCartClickListener) {
         this.foodList = foodList != null ? foodList : new ArrayList<>();
-        this.listener = listener;
-        this.cartListener = cartListener;
+        this.itemClickListener = itemClickListener;
+        this.addToCartClickListener = addToCartClickListener;
     }
 
     @NonNull
     @Override
     public FoodViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_food, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_food, parent, false);
         return new FoodViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
         Food food = foodList.get(position);
-        holder.bind(food, listener, cartListener);
+        holder.bind(food, itemClickListener, addToCartClickListener);
     }
 
     @Override
@@ -52,7 +57,7 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder
     }
 
     public void updateList(List<Food> newList) {
-        this.foodList = newList;
+        this.foodList = newList != null ? newList : new ArrayList<>();
         notifyDataSetChanged();
     }
 
@@ -71,25 +76,24 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder
             btnAddToCart = itemView.findViewById(R.id.btnAddToCart);
         }
 
-        void bind(final Food food, final OnItemClickListener listener, final OnAddToCartClickListener cartListener) {
+        void bind(final Food food,
+                  final OnItemClickListener itemClickListener,
+                  final OnAddToCartClickListener addToCartClickListener) {
+
             tvFoodName.setText(food.getName());
             tvFoodDescription.setText(food.getDescription());
-            tvFoodPrice.setText(String.format("%,.0f VNĐ", food.getPrice()));
             tvFoodCategory.setText(food.getCategory());
 
-            itemView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    listener.onItemClick(food);
-                }
-            });
+            NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+            tvFoodPrice.setText(formatter.format(food.getPrice()) + " VNĐ");
 
-            btnAddToCart.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    cartListener.onAddToCartClick(food);
-                }
-            });
+            if (itemClickListener != null) {
+                itemView.setOnClickListener(v -> itemClickListener.onItemClick(food));
+            }
+
+            if (addToCartClickListener != null) {
+                btnAddToCart.setOnClickListener(v -> addToCartClickListener.onAddToCartClick(food));
+            }
         }
     }
 }

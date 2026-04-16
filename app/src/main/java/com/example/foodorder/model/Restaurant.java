@@ -1,6 +1,9 @@
 package com.example.foodorder.model;
 
-public class Restaurant {
+import java.io.Serializable;
+
+public class Restaurant implements Serializable {  // THÊM implements Serializable
+
     private int id;
     private String name;
     private String address;
@@ -22,67 +25,23 @@ public class Restaurant {
         this.imageUrl = imageUrl;
     }
 
-    public int getId() {
-        return id;
-    }
+    // Getters
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public String getAddress() { return address; }
+    public double getRating() { return rating; }
+    public double getDistance() { return distance; }
+    public String getDeliveryTime() { return deliveryTime; }
+    public String getDiscount() { return discount; }
+    public String getImageUrl() { return imageUrl; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public double getRating() {
-        return rating;
-    }
-
-    public void setRating(double rating) {
-        this.rating = rating;
-    }
-
-    public double getDistance() {
-        return distance;
-    }
-
-    public void setDistance(double distance) {
-        this.distance = distance;
-    }
-
-    public String getDeliveryTime() {
-        return deliveryTime;
-    }
-
-    public void setDeliveryTime(String deliveryTime) {
-        this.deliveryTime = deliveryTime;
-    }
-
-    public String getDiscount() {
-        return discount;
-    }
-
-    public void setDiscount(String discount) {
-        this.discount = discount;
-    }
-
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
+    // Setters (nếu cần)
+    public void setId(int id) { this.id = id; }
+    public void setName(String name) { this.name = name; }
+    public void setAddress(String address) { this.address = address; }
+    public void setRating(double rating) { this.rating = rating; }
+    public void setDistance(double distance) { this.distance = distance; }
+    public void setDeliveryTime(String deliveryTime) { this.deliveryTime = deliveryTime; }
+    public void setDiscount(String discount) { this.discount = discount; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

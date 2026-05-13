@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    android:padding="12dp">
+
+    <!-- Tiêu đề -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⭐ Đánh giá của tôi"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <!-- RecyclerView hiển thị danh sách cần đánh giá -->
+
+    <!-- TextView hiển thị khi không có đơn hàng cần đánh giá -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvRating"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="⭐\nChưa có đơn hàng nào cần đánh giá"
+        android:textSize="16sp"
+        android:textColor="#757575"
+        android:lineSpacingExtra="8dp"
+        android:visibility="gone" />
+
+</LinearLayout>

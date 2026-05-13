@@ -11,7 +11,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.adapter.FoodAdapter;
-import com.example.foodorder.database.DatabaseHelper;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.model.Restaurant;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
@@ -20,13 +19,19 @@ import java.util.List;
 
 public class RestaurantDetailActivity extends AppCompatActivity {
 
+    // Views
     private ImageView ivRestaurantImage;
-    private TextView tvRestaurantName, tvRestaurantAddress, tvDeliveryTime, tvDiscount;
+    private TextView tvRestaurantName;
+    private TextView tvRestaurantAddress;
+    private TextView tvRating;              // THÊM DÒNG NÀY
+    private TextView tvDeliveryTime;
+    private TextView tvDiscount;
     private RatingBar ratingBar;
     private RecyclerView rvFoods;
-    private CollapsingToolbarLayout collapsingToolbar;
+    private CollapsingToolbarLayout collapsingToolbar;  // SỬA TÊN
     private Toolbar toolbar;
 
+    // Data
     private Restaurant restaurant;
     private List<Food> restaurantFoods;
     private FoodAdapter foodAdapter;
@@ -36,7 +41,6 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_restaurant_detail);
 
-        // Nhận dữ liệu từ Intent
         restaurant = (Restaurant) getIntent().getSerializableExtra("restaurant");
 
         initViews();
@@ -49,11 +53,12 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         ivRestaurantImage = findViewById(R.id.ivRestaurantImage);
         tvRestaurantName = findViewById(R.id.tvRestaurantName);
         tvRestaurantAddress = findViewById(R.id.tvRestaurantAddress);
+        tvRating = findViewById(R.id.tvRating);           // THÊM
         tvDeliveryTime = findViewById(R.id.tvDeliveryTime);
         tvDiscount = findViewById(R.id.tvDiscount);
         ratingBar = findViewById(R.id.ratingBar);
         rvFoods = findViewById(R.id.rvFoods);
-        collapsingToolbar = findViewById(R.id.collapsingToolbar);
+        collapsingToolbar = findViewById(R.id.collapsingToolbar);  // SỬA
         toolbar = findViewById(R.id.toolbar);
     }
 
@@ -62,7 +67,6 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
-
         if (restaurant != null) {
             collapsingToolbar.setTitle(restaurant.getName());
         }
@@ -72,8 +76,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         if (restaurant != null) {
             tvRestaurantName.setText(restaurant.getName());
             tvRestaurantAddress.setText("📍 " + restaurant.getAddress());
-            tvDeliveryTime.setText("⏱️ " + restaurant.getDeliveryTime());
-            tvDiscount.setText(restaurant.getDiscount());
+            tvRating.setText(String.valueOf(restaurant.getRating()));
             ratingBar.setRating((float) restaurant.getRating());
         }
     }
@@ -81,37 +84,22 @@ public class RestaurantDetailActivity extends AppCompatActivity {
     private void loadRestaurantFoods() {
         restaurantFoods = new ArrayList<>();
 
-        // Tạo món ăn mẫu cho nhà hàng này
-        for (int i = 1; i <= 10; i++) {
-            Food food = new Food(
-                    i,
-                    "Món đặc biệt " + i,
-                    "Món ngon đặc trưng của " + restaurant.getName(),
-                    30000 + (i * 5000),
-                    0,
-                    i % 2 == 0 ? "Fast Food" : "Món Việt"
-            );
-            food.setRestaurantName(restaurant.getName());
-            food.setRestaurantId(restaurant.getId());
-            food.setRating(4.0 + (i % 10) * 0.1);
-            restaurantFoods.add(food);
+        // TODO: Thêm món ăn mẫu hoặc load từ Firebase
+        if (restaurantFoods.isEmpty()) {
+            // Thêm món mẫu để test
+            Food sampleFood = new Food("1", "Món đặc biệt", "Món ngon của nhà hàng", 50000, "Fast Food", restaurant.getId());
+            sampleFood.setRestaurantName(restaurant.getName());
+            restaurantFoods.add(sampleFood);
         }
 
-        // Setup FoodAdapter với sự kiện click và thêm vào giỏ
         foodAdapter = new FoodAdapter(restaurantFoods,
                 food -> {
-                    // Mở chi tiết món ăn
                     Intent intent = new Intent(this, FoodDetailActivity.class);
                     intent.putExtra("food", food);
                     startActivity(intent);
                 },
                 food -> {
-                    // Thêm vào giỏ hàng
-                    // Gửi kết quả về HomeActivity
-                    Intent resultIntent = new Intent();
-                    resultIntent.putExtra("added_food", food);
-                    setResult(RESULT_OK, resultIntent);
-                    Toast.makeText(this, "Đã thêm " + food.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Đã thêm " + food.getName(), Toast.LENGTH_SHORT).show();
                 }
         );
 

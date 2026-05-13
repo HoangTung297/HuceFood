@@ -1,31 +1,43 @@
 package com.example.foodorder;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.foodorder.database.DatabaseHelper;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 
 public class LoginActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
     private Button btnLogin;
     private TextView tvRegister;
-    private DatabaseHelper databaseHelper;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        databaseHelper = new DatabaseHelper(this);
+        mAuth = FirebaseAuth.getInstance();
 
         initViews();
         setupListeners();
+
+        // Auto login if already signed in
+        if (mAuth.getCurrentUser() != null) {
+            startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+            finish();
+        }
     }
 
     private void initViews() {
@@ -56,29 +68,45 @@ public class LoginActivity extends AppCompatActivity {
         String password = etPassword.getText().toString().trim();
 
         if (email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Vui lòng nhập email và mật khẩu", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Kiểm tra email có tồn tại không
-        if (!databaseHelper.isEmailExists(email)) {
-            Toast.makeText(this, "Email không tồn tại. Vui lòng đăng ký!", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Save user info
+                            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                            prefs.edit().putString("user_email", email).apply();
 
-        // Kiểm tra đăng nhập
-        if (databaseHelper.checkUser(email, password)) {
-            Toast.makeText(this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
-
-            // In ra log để kiểm tra
-            databaseHelper.printAllUsers();
-
-            Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
-            intent.putExtra("user_email", email);
-            startActivity(intent);
-            finish();
-        } else {
-            Toast.makeText(this, "Mật khẩu không đúng!", Toast.LENGTH_SHORT).show();
-        }
+                            Toast.makeText(LoginActivity.this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
+                            startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+                            finish();
+                        } else {
+                            // Hiển thị lỗi chi tiết
+                            String errorMessage = "Đăng nhập thất bại";
+                            if (task.getException() instanceof FirebaseAuthException) {
+                                String errorCode = ((FirebaseAuthException) task.getException()).getErrorCode();
+                                switch (errorCode) {
+                                    case "ERROR_USER_NOT_FOUND":
+                                        errorMessage = "Email chưa được đăng ký. Vui lòng đăng ký trước!";
+                                        break;
+                                    case "ERROR_WRONG_PASSWORD":
+                                        errorMessage = "Mật khẩu không đúng!";
+                                        break;
+                                    case "ERROR_INVALID_EMAIL":
+                                        errorMessage = "Email không hợp lệ!";
+                                        break;
+                                    default:
+                                        errorMessage = task.getException().getMessage();
+                                        break;
+                                }
+                            }
+                            Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
     }
 }

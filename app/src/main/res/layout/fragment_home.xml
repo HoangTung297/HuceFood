@@ -1,22 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:background="#F5F5F5"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header địa chỉ -->
+        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:padding="16dp"
-            android:gravity="center_vertical">
+            android:background="#FFFFFF"
+            android:gravity="center_vertical"
+            android:elevation="2dp">
 
             <LinearLayout
                 android:id="@+id/layoutAddress"
@@ -32,7 +35,7 @@
                     android:layout_height="wrap_content"
                     android:text="Giao đến:"
                     android:textSize="12sp"
-                    android:textColor="@android:color/darker_gray"/>
+                    android:textColor="#757575"/>
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -47,7 +50,7 @@
                         android:text="Chọn địa chỉ"
                         android:textSize="14sp"
                         android:textStyle="bold"
-                        android:textColor="@color/primary_color"/>
+                        android:textColor="#FF5722"/>
 
                     <ImageView
                         android:layout_width="16dp"
@@ -63,12 +66,10 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_profile"
                 android:background="@drawable/circle_background"
-                android:clickable="true"
-                android:focusable="true"
                 android:padding="8dp"/>
         </LinearLayout>
 
-        <!-- Thanh tìm kiếm -->
+        <!-- Search -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -81,13 +82,14 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="12dp"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:background="#FFFFFF">
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_search"
-                    android:tint="@android:color/darker_gray"/>
+                    android:tint="#757575"/>
 
                 <EditText
                     android:id="@+id/etSearch"
@@ -104,114 +106,123 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_close"
-                    android:tint="@android:color/darker_gray"
+                    android:tint="#757575"
                     android:visibility="gone"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Banner Slider -->
+        <!-- Banner -->
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/bannerViewPager"
             android:layout_width="match_parent"
             android:layout_height="180dp"
             android:layout_margin="12dp"/>
 
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"/>
-
-        <!-- Voucher -->
+        <!-- FLASH SALE - QUAN TRỌNG: nestedScrollingEnabled="false" -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🔥 Trùm Deal Ngon"
+            android:text="⚡ FLASH SALE"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:padding="16dp"/>
+            android:textColor="#FF5722"
+            android:padding="16dp"
+            android:background="#FFFFFF"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvFlashSale"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp"
+            android:background="#FFFFFF"/>
+
+        <!-- HOT DEAL -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔥 HOT DEAL"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="16dp"
+            android:background="#FFFFFF"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvHotDeals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp"
+            android:background="#FFFFFF"/>
+
+        <!-- VOUCHER -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🎫 SIÊU VOUCHER"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="16dp"
+            android:background="#FFFFFF"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvVouchers"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+            android:layout_height="120dp"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp"
+            android:background="#FFFFFF"/>
 
-        <!-- Danh mục -->
+        <!-- DANH MỤC -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📂 Danh mục"
+            android:text="📂 DANH MỤC"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:padding="16dp"/>
+            android:padding="16dp"
+            android:background="#FFFFFF"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvCategories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+            android:orientation="horizontal"
+            android:nestedScrollingEnabled="false"
+            android:layout_marginBottom="8dp"
+            android:background="#FFFFFF"/>
 
-        <!-- Món ăn bán chạy -->
+        <!-- TẤT CẢ MÓN ĂN -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🔥 Món bán chạy nhất"
+            android:text="🍽️ TẤT CẢ MÓN ĂN"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:padding="16dp"/>
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvBestSellers"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Món gần tôi -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📍 Món gần tôi"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:padding="16dp"/>
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvNearby"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Món đánh giá cao -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⭐ Món đánh giá cao"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:padding="16dp"/>
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvTopRated"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Tất cả món ăn -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🍽️ Tất cả món ăn"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:padding="16dp"/>
+            android:padding="16dp"
+            android:background="#FFFFFF"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvAllFoods"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="80dp"
+            android:nestedScrollingEnabled="false"
+            android:background="#FFFFFF"/>
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Đang tải dữ liệu..."
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="16dp"
+            android:textColor="#FF5722"
+            android:visibility="gone"/>
 
     </LinearLayout>
 
-</ScrollView>
+</androidx.core.widget.NestedScrollView>

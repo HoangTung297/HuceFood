@@ -28,7 +28,6 @@ public class CartActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cart);
 
-        // Nhận dữ liệu từ Intent
         cartList = (List<Food>) getIntent().getSerializableExtra("cart_list");
         if (cartList == null) {
             cartList = new ArrayList<>();
@@ -49,7 +48,14 @@ public class CartActivity extends AppCompatActivity {
         btnCheckout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                checkout();
+                if (cartList.isEmpty()) {
+                    Toast.makeText(CartActivity.this, "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(CartActivity.this, "Đặt hàng thành công!", Toast.LENGTH_SHORT).show();
+                    Intent resultIntent = new Intent();
+                    setResult(RESULT_OK, resultIntent);
+                    finish();
+                }
             }
         });
 
@@ -68,7 +74,6 @@ public class CartActivity extends AppCompatActivity {
                 cartList.remove(food);
                 cartAdapter.notifyDataSetChanged();
                 updateTotalPrice();
-
                 if (cartList.isEmpty()) {
                     tvEmptyCart.setVisibility(View.VISIBLE);
                 }
@@ -78,11 +83,7 @@ public class CartActivity extends AppCompatActivity {
         rvCart.setLayoutManager(new LinearLayoutManager(this));
         rvCart.setAdapter(cartAdapter);
 
-        if (cartList.isEmpty()) {
-            tvEmptyCart.setVisibility(View.VISIBLE);
-        } else {
-            tvEmptyCart.setVisibility(View.GONE);
-        }
+        tvEmptyCart.setVisibility(cartList.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
     private void updateTotalPrice() {
@@ -91,20 +92,5 @@ public class CartActivity extends AppCompatActivity {
             totalPrice += food.getPrice();
         }
         tvTotalPrice.setText(String.format("Tổng cộng: %,.0f VNĐ", totalPrice));
-    }
-
-    private void checkout() {
-        if (cartList.isEmpty()) {
-            Toast.makeText(this, "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Toast.makeText(this, "Đặt hàng thành công!\nTổng tiền: " +
-                String.format("%,.0f VNĐ", totalPrice), Toast.LENGTH_LONG).show();
-
-        // Trả kết quả về ProfileFragment
-        Intent resultIntent = new Intent();
-        setResult(RESULT_OK, resultIntent);
-        finish();
     }
 }

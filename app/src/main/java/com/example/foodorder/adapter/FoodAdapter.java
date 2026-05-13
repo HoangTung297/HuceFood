@@ -1,5 +1,7 @@
 package com.example.foodorder.adapter;
 
+import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Food;
 import java.text.NumberFormat;
@@ -15,11 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
+public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
 
     private List<Food> foodList;
-    private OnItemClickListener itemClickListener;
-    private OnAddToCartClickListener addToCartClickListener;
+    private OnItemClickListener onItemClick;
+    private OnAddToCartClickListener onAddToCart;
+    private Context context;
 
     public interface OnItemClickListener {
         void onItemClick(Food food);
@@ -29,26 +33,65 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder
         void onAddToCartClick(Food food);
     }
 
-    public FoodAdapter(List<Food> foodList,
-                       OnItemClickListener itemClickListener,
-                       OnAddToCartClickListener addToCartClickListener) {
+    public FoodAdapter(List<Food> foodList, OnItemClickListener onItemClick, OnAddToCartClickListener onAddToCart) {
         this.foodList = foodList != null ? foodList : new ArrayList<>();
-        this.itemClickListener = itemClickListener;
-        this.addToCartClickListener = addToCartClickListener;
+        this.onItemClick = onItemClick;
+        this.onAddToCart = onAddToCart;
     }
 
     @NonNull
     @Override
-    public FoodViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_food, parent, false);
-        return new FoodViewHolder(view);
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        context = parent.getContext();
+        View view = LayoutInflater.from(context).inflate(R.layout.item_food, parent, false);
+        return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Food food = foodList.get(position);
-        holder.bind(food, itemClickListener, addToCartClickListener);
+
+        // Hiển thị tên món ăn
+        holder.tvName.setText(food.getName());
+
+        // Hiển thị mô tả (nếu có)
+        if (food.getDescription() != null && !food.getDescription().isEmpty()) {
+            holder.tvDesc.setText(food.getDescription());
+            holder.tvDesc.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvDesc.setVisibility(View.GONE);
+        }
+
+        // Hiển thị giá
+        NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+        holder.tvPrice.setText(formatter.format(food.getPrice()) + "đ");
+
+        // Hiển thị ảnh
+        if (food.getImageUrl() != null && !food.getImageUrl().isEmpty()) {
+            Glide.with(context)
+                    .load(food.getImageUrl())
+                    .placeholder(R.drawable.ic_food_default)
+                    .error(R.drawable.ic_food_default)
+                    .into(holder.ivImage);
+        } else {
+            holder.ivImage.setImageResource(R.drawable.ic_food_default);
+        }
+
+        // Nút thêm vào giỏ
+        holder.btnAdd.setOnClickListener(v -> {
+            if (onAddToCart != null) {
+                onAddToCart.onAddToCartClick(food);
+                Log.d("FoodAdapter", "Added to cart: " + food.getName());
+            }
+        });
+
+        // Click vào item
+        holder.itemView.setOnClickListener(v -> {
+            if (onItemClick != null) {
+                onItemClick.onItemClick(food);
+                Log.d("FoodAdapter", "Clicked: " + food.getName());
+            }
+        });
     }
 
     @Override
@@ -59,41 +102,21 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder
     public void updateList(List<Food> newList) {
         this.foodList = newList != null ? newList : new ArrayList<>();
         notifyDataSetChanged();
+        Log.d("FoodAdapter", "Updated list with " + this.foodList.size() + " items");
     }
 
-    static class FoodViewHolder extends RecyclerView.ViewHolder {
-        ImageView ivFoodImage;
-        TextView tvFoodName, tvFoodDescription, tvFoodPrice, tvFoodCategory;
-        Button btnAddToCart;
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView tvName, tvDesc, tvPrice;
+        Button btnAdd;
+        ImageView ivImage;
 
-        FoodViewHolder(@NonNull View itemView) {
+        ViewHolder(@NonNull View itemView) {
             super(itemView);
-            ivFoodImage = itemView.findViewById(R.id.ivFoodImage);
-            tvFoodName = itemView.findViewById(R.id.tvFoodName);
-            tvFoodDescription = itemView.findViewById(R.id.tvFoodDescription);
-            tvFoodPrice = itemView.findViewById(R.id.tvFoodPrice);
-            tvFoodCategory = itemView.findViewById(R.id.tvFoodCategory);
-            btnAddToCart = itemView.findViewById(R.id.btnAddToCart);
-        }
-
-        void bind(final Food food,
-                  final OnItemClickListener itemClickListener,
-                  final OnAddToCartClickListener addToCartClickListener) {
-
-            tvFoodName.setText(food.getName());
-            tvFoodDescription.setText(food.getDescription());
-            tvFoodCategory.setText(food.getCategory());
-
-            NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
-            tvFoodPrice.setText(formatter.format(food.getPrice()) + " VNĐ");
-
-            if (itemClickListener != null) {
-                itemView.setOnClickListener(v -> itemClickListener.onItemClick(food));
-            }
-
-            if (addToCartClickListener != null) {
-                btnAddToCart.setOnClickListener(v -> addToCartClickListener.onAddToCartClick(food));
-            }
+            tvName = itemView.findViewById(R.id.tvFoodName);
+            tvDesc = itemView.findViewById(R.id.tvFoodDescription);
+            tvPrice = itemView.findViewById(R.id.tvFoodPrice);
+            btnAdd = itemView.findViewById(R.id.btnAddToCart);
+            ivImage = itemView.findViewById(R.id.ivFoodImage);
         }
     }
 }

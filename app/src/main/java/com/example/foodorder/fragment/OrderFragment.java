@@ -12,30 +12,31 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.adapter.OrderHistoryAdapter;
-import com.example.foodorder.database.DatabaseHelper;
 import com.example.foodorder.model.Order;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
 public class OrderFragment extends Fragment {
 
     private RecyclerView rvOrders;
-    private OrderHistoryAdapter orderAdapter;
-    private DatabaseHelper databaseHelper;
-    private List<Order> orderList;
     private TextView tvEmptyOrders;
+    private OrderHistoryAdapter orderAdapter;
+    private List<Order> orderList;
+    private FirebaseFirestore firestore;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_order, container, false);
 
-        databaseHelper = new DatabaseHelper(getActivity());
+        firestore = FirebaseFirestore.getInstance();
         orderList = new ArrayList<>();
 
         initViews(view);
         setupRecyclerView();
-        loadOrders();
+        loadOrdersFromFirebase();
 
         return view;
     }
@@ -51,8 +52,9 @@ public class OrderFragment extends Fragment {
         rvOrders.setAdapter(orderAdapter);
     }
 
-    private void loadOrders() {
-        // TODO: Load orders from database
+    private void loadOrdersFromFirebase() {
+        // TODO: Load orders from Firebase for current user
+        // Tạm thời hiển thị trạng thái trống
         if (orderList.isEmpty()) {
             tvEmptyOrders.setVisibility(View.VISIBLE);
             rvOrders.setVisibility(View.GONE);

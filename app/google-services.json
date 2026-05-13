@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "870254670054",
+    "project_id": "hucefood",
+    "storage_bucket": "hucefood.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870254670054:android:9caa5b79000876efe54b27",
+        "android_client_info": {
+          "package_name": "com.example.foodorder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7ZdjbMPR0K9jMUoETGLnQgDnzYh_UWfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

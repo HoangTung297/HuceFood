@@ -10,10 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Restaurant;
-import java.text.NumberFormat;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.RestaurantViewHolder> {
 
@@ -24,15 +21,8 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
         void onItemClick(Restaurant restaurant);
     }
 
-    // Constructor với listener
-    public RestaurantAdapter(List<Restaurant> restaurantList, OnItemClickListener listener) {
-        this.restaurantList = restaurantList != null ? restaurantList : new ArrayList<>();
-        this.listener = listener;
-    }
-
-    // Constructor không có listener
     public RestaurantAdapter(List<Restaurant> restaurantList) {
-        this(restaurantList, null);
+        this.restaurantList = restaurantList;
     }
 
     public void setOnItemClickListener(OnItemClickListener listener) {
@@ -55,72 +45,30 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Re
 
     @Override
     public int getItemCount() {
-        return restaurantList.size();
+        return restaurantList != null ? restaurantList.size() : 0;
     }
 
-    // Cập nhật toàn bộ danh sách
     public void updateList(List<Restaurant> newList) {
-        this.restaurantList = newList != null ? newList : new ArrayList<>();
+        this.restaurantList = newList;
         notifyDataSetChanged();
-    }
-
-    // Thêm một nhà hàng vào cuối danh sách
-    public void addItem(Restaurant restaurant) {
-        restaurantList.add(restaurant);
-        notifyItemInserted(restaurantList.size() - 1);
-    }
-
-    // Thêm nhiều nhà hàng vào cuối danh sách
-    public void addItems(List<Restaurant> newItems) {
-        int startPosition = restaurantList.size();
-        restaurantList.addAll(newItems);
-        notifyItemRangeInserted(startPosition, newItems.size());
-    }
-
-    // Xóa một nhà hàng theo vị trí
-    public void removeItem(int position) {
-        if (position >= 0 && position < restaurantList.size()) {
-            restaurantList.remove(position);
-            notifyItemRemoved(position);
-        }
-    }
-
-    // Xóa tất cả
-    public void clear() {
-        restaurantList.clear();
-        notifyDataSetChanged();
-    }
-
-    // Lấy danh sách hiện tại
-    public List<Restaurant> getCurrentList() {
-        return restaurantList;
     }
 
     static class RestaurantViewHolder extends RecyclerView.ViewHolder {
-        ImageView ivRestaurantImage;
-        TextView tvRestaurantName, tvRestaurantAddress, tvDistanceTime, tvDiscount;
+        TextView tvRestaurantName, tvRestaurantAddress;
         RatingBar ratingBar;
+        ImageView ivRestaurantImage;
 
-        RestaurantViewHolder(@NonNull View itemView) {
+        public RestaurantViewHolder(@NonNull View itemView) {
             super(itemView);
-            ivRestaurantImage = itemView.findViewById(R.id.ivRestaurantImage);
             tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
             tvRestaurantAddress = itemView.findViewById(R.id.tvRestaurantAddress);
-            tvDistanceTime = itemView.findViewById(R.id.tvDistanceTime);
-            tvDiscount = itemView.findViewById(R.id.tvDiscount);
             ratingBar = itemView.findViewById(R.id.ratingBar);
+            ivRestaurantImage = itemView.findViewById(R.id.ivRestaurantImage);
         }
 
-        void bind(final Restaurant restaurant, final OnItemClickListener listener) {
+        public void bind(final Restaurant restaurant, final OnItemClickListener listener) {
             tvRestaurantName.setText(restaurant.getName());
             tvRestaurantAddress.setText(restaurant.getAddress());
-
-            // Hiển thị khoảng cách và thời gian giao hàng
-            String distanceTime = String.format(Locale.getDefault(),
-                    "%.1fkm | %s", restaurant.getDistance(), restaurant.getDeliveryTime());
-            tvDistanceTime.setText(distanceTime);
-
-            tvDiscount.setText(restaurant.getDiscount());
             ratingBar.setRating((float) restaurant.getRating());
 
             // Xử lý click

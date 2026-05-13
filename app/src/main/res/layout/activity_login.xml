@@ -48,6 +48,14 @@
         android:padding="16dp"
         android:layout_marginBottom="16dp"/>
 
+    <Button
+        android:id="@+id/btnGoogleLogin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Đăng nhập với Google"
+        android:backgroundTint="#4285F4"
+        android:layout_marginBottom="16dp"/>
+
     <TextView
         android:id="@+id/tvRegister"
         android:layout_width="wrap_content"

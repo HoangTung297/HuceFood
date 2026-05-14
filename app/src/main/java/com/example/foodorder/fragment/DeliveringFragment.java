@@ -15,37 +15,48 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.adapter.SuggestRestaurantAdapter;
 import com.example.foodorder.model.Restaurant;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DeliveringFragment extends Fragment {
 
-    // ============ KHAI BÁO TẤT CẢ BIẾN ============
-    private RecyclerView rvSuggestions;           // ✅ RecyclerView cho gợi ý
-    private TextView tvOrderId;                   // ✅ Mã đơn hàng
-    private TextView tvRestaurantName;            // ✅ Tên nhà hàng
-    private TextView tvFoodItems;                 // ✅ Danh sách món ăn
-    private TextView tvTotalPrice;                // ✅ Tổng tiền
-    private Button btnTrack;                      // ✅ Nút theo dõi
-    private View layoutEmpty;                     // ✅ Layout khi không có đơn hàng
-    private View cardOrder;                       // ✅ Card đơn hàng
-    private SuggestRestaurantAdapter suggestAdapter;  // ✅ Adapter gợi ý
+    // ============ KHAI BÁO VIEW ============
+    private RecyclerView rvSuggestions;
+    private TextView tvOrderId;
+    private TextView tvRestaurantName;
+    private TextView tvFoodItems;
+    private TextView tvTotalPrice;
+    private Button btnTrack;
+    private View layoutEmpty;
+    private View cardOrder;
+
+    // ============ ADAPTER & DATA ============
+    private SuggestRestaurantAdapter suggestAdapter;
+    private List<Restaurant> suggestionList;
+
+    // ============ FIREBASE ============
+    private FirebaseFirestore firestore;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_delivering, container, false);
 
+        // Khởi tạo Firebase
+        firestore = FirebaseFirestore.getInstance();
+        suggestionList = new ArrayList<>();
+
         initViews(view);
         setupSuggestions();
-        loadOrderData();
-        loadSuggestions();
+        loadOrderDataFromFirebase();
+        loadSuggestionsFromFirebase();
 
         return view;
     }
 
     private void initViews(View view) {
-        // Ánh xạ các view
         rvSuggestions = view.findViewById(R.id.rvSuggestions);
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
         cardOrder = view.findViewById(R.id.cardOrder);
@@ -58,51 +69,67 @@ public class DeliveringFragment extends Fragment {
 
     private void setupSuggestions() {
         rvSuggestions.setLayoutManager(new LinearLayoutManager(getContext()));
-        suggestAdapter = new SuggestRestaurantAdapter(new ArrayList<>());
+        suggestAdapter = new SuggestRestaurantAdapter(suggestionList);
         rvSuggestions.setAdapter(suggestAdapter);
+
+        // Xử lý click vào nhà hàng gợi ý
+        suggestAdapter.setOnItemClickListener(restaurant -> {
+            Toast.makeText(getContext(), "Đã chọn: " + restaurant.getName(), Toast.LENGTH_SHORT).show();
+            // TODO: Mở chi tiết nhà hàng
+        });
     }
 
-    private void loadOrderData() {
-        // TODO: Thay bằng dữ liệu thật từ database
-        boolean hasOrder = false;  // Giả sử chưa có đơn hàng
+    private void loadOrderDataFromFirebase() {
+        // TODO: Load đơn hàng đang giao của user hiện tại từ Firebase
+        // Hiện tại tạm thời hiển thị trạng thái không có đơn hàng
+        boolean hasOrder = false;  // Sẽ thay bằng kiểm tra từ Firebase
 
         if (hasOrder) {
-            // Có đơn hàng: hiển thị card, ẩn layout rỗng
             cardOrder.setVisibility(View.VISIBLE);
             layoutEmpty.setVisibility(View.GONE);
-
-            // Gán dữ liệu mẫu
-            tvOrderId.setText("#ĐƠN2024001");
-            tvRestaurantName.setText("Gà Rán KFC");
-            tvFoodItems.setText("• Gà rán giòn x2\n• Khoai tây chiên x1\n• Pepsi x1");
-            tvTotalPrice.setText("145.000đ");
-
+            // Gán dữ liệu từ Firebase
             btnTrack.setOnClickListener(v -> {
                 Toast.makeText(getContext(), "Đang theo dõi đơn hàng...", Toast.LENGTH_SHORT).show();
             });
         } else {
-            // Không có đơn hàng: ẩn card, hiển thị layout rỗng
             cardOrder.setVisibility(View.GONE);
             layoutEmpty.setVisibility(View.VISIBLE);
         }
     }
 
-    private void loadSuggestions() {
-        List<Restaurant> suggestions = new ArrayList<>();
+    private void loadSuggestionsFromFirebase() {
+        // Load danh sách nhà hàng gợi ý từ Firestore
+        firestore.collection("restaurants")
+                .limit(10)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    suggestionList.clear();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        String id = doc.getId();
+                        String name = doc.getString("name");
+                        String address = doc.getString("address");
+                        Double rating = doc.getDouble("rating");
+                        Double distance = doc.getDouble("distance");
+                        String deliveryTime = doc.getString("deliveryTime");
+                        String discount = doc.getString("discount");
+                        String imageUrl = doc.getString("imageUrl");
 
-        // Dữ liệu mẫu cho gợi ý
-        suggestions.add(new Restaurant(1, "Bún Bò Huế, Cơm Gà và Cơm Sườn - Gia Huy Quân",
-                "Linh Đàm", 4.6, 0.5, "25phút", "Giảm món | Mã giảm 19%", ""));
+                        if (name == null) name = "Nhà hàng";
+                        if (address == null) address = "Đang cập nhật";
+                        if (rating == null) rating = 4.0;
+                        if (distance == null) distance = 1.0;
+                        if (deliveryTime == null) deliveryTime = "30phút";
+                        if (discount == null) discount = "Giảm 10%";
+                        if (imageUrl == null) imageUrl = "";
 
-        suggestions.add(new Restaurant(2, "Trà Chanh Bụi Phố - Linh Đàm",
-                "Linh Đàm", 4.2, 0.3, "22phút", "Mã giảm 19%", ""));
-
-        suggestions.add(new Restaurant(3, "Ăn Vật Bon Bon - Thịt Trâu Gác Bếp Tây Bắc",
-                "Hoàng Mai", 4.5, 0.8, "30phút", "Giảm 15%", ""));
-
-        suggestions.add(new Restaurant(4, "Pizza Hut - Linh Đàm",
-                "Linh Đàm", 4.7, 1.2, "35phút", "Mua 1 tặng 1", ""));
-
-        suggestAdapter.updateList(suggestions);
+                        Restaurant restaurant = new Restaurant(id, name, address, rating,
+                                distance, deliveryTime, discount, imageUrl);
+                        suggestionList.add(restaurant);
+                    }
+                    suggestAdapter.updateList(suggestionList);
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Lỗi tải gợi ý: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 }

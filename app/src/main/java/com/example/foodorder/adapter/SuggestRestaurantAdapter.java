@@ -8,6 +8,7 @@ import android.widget.RatingBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Restaurant;
 import java.util.List;
@@ -55,7 +56,11 @@ public class SuggestRestaurantAdapter extends RecyclerView.Adapter<SuggestRestau
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivRestaurantImage;
-        TextView tvRestaurantName, tvRating, tvDistance, tvDeliveryTime, tvDiscount;
+        TextView tvRestaurantName;
+        TextView tvRating;
+        TextView tvDistance;
+        TextView tvDeliveryTime;
+        TextView tvDiscount;
         RatingBar ratingBar;
 
         ViewHolder(@NonNull View itemView) {
@@ -71,11 +76,18 @@ public class SuggestRestaurantAdapter extends RecyclerView.Adapter<SuggestRestau
 
         void bind(Restaurant restaurant, OnItemClickListener listener) {
             tvRestaurantName.setText(restaurant.getName());
-            tvRating.setText(String.valueOf(restaurant.getRating()));
-            tvDistance.setText(restaurant.getDistance() + "km");
+            tvRating.setText(String.format("%.1f", restaurant.getRating()));
+            ratingBar.setRating((float) restaurant.getRating());
+            tvDistance.setText(String.format("%.1fkm", restaurant.getDistance()));
             tvDeliveryTime.setText(restaurant.getDeliveryTime());
             tvDiscount.setText(restaurant.getDiscount());
-            ratingBar.setRating((float) restaurant.getRating());
+
+            if (restaurant.getImageUrl() != null && !restaurant.getImageUrl().isEmpty()) {
+                Glide.with(itemView.getContext())
+                        .load(restaurant.getImageUrl())
+                        .placeholder(R.drawable.ic_food_default)
+                        .into(ivRestaurantImage);
+            }
 
             if (listener != null) {
                 itemView.setOnClickListener(v -> listener.onItemClick(restaurant));

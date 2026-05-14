@@ -40,6 +40,7 @@
         android:padding="16dp"
         android:background="@android:color/white">
 
+        <!-- Tổng tiền tạm tính -->
         <TextView
             android:id="@+id/tvTotalPrice"
             android:layout_width="wrap_content"
@@ -48,6 +49,46 @@
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="@color/primary_color"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Phí giao hàng -->
+        <TextView
+            android:id="@+id/tvDeliveryFee"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Phí giao hàng: 0 VNĐ"
+            android:textSize="14sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginBottom="4dp"/>
+
+        <!-- Giảm giá voucher -->
+        <TextView
+            android:id="@+id/tvVoucherDiscount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Giảm giá: 0 VNĐ"
+            android:textSize="14sp"
+            android:textColor="#4CAF50"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Thành tiền cuối cùng -->
+        <TextView
+            android:id="@+id/tvFinalTotal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Thành tiền: 0 VNĐ"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FF5722"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Nút chọn voucher -->
+        <Button
+            android:id="@+id/btnSelectVoucher"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Chọn voucher"
+            android:backgroundTint="#4CAF50"
             android:layout_marginBottom="16dp"/>
 
         <LinearLayout

@@ -32,6 +32,8 @@ import com.example.foodorder.model.Banner;
 import com.example.foodorder.model.Category;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.model.Voucher;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
@@ -40,31 +42,31 @@ import java.util.List;
 
 public class HomeFragment extends Fragment {
 
-    // Views
+    // ============ VIEWS ============
     private ViewPager2 bannerViewPager;
+    private TabLayout tabLayout;
     private RecyclerView rvFlashSale, rvHotDeals, rvVouchers, rvCategories, rvAllFoods;
     private TextView tvAddress, tvStatus;
     private ImageView ivAvatar, ivClearSearch;
     private EditText etSearch;
     private View layoutAddress;
 
-    // Data
+    // ============ DATA ============
     private List<Food> allFoodsList;
     private List<Voucher> voucherList;
 
+    // ============ ADAPTERS ============
     private FoodAdapter flashSaleAdapter, hotDealAdapter, allFoodsAdapter;
     private VoucherAdapter voucherAdapter;
     private CategoryAdapter categoryAdapter;
     private BannerAdapter bannerAdapter;
 
-    // Firebase
+    // ============ FIREBASE & BANNER ============
     private FirebaseFirestore firestore;
-
-    // Banner auto slide
     private Handler bannerHandler = new Handler();
     private Runnable bannerRunnable;
 
-    // SharedPreferences
+    // ============ SHARED PREFERENCES ============
     private SharedPreferences sharedPreferences;
     private static final String KEY_ADDRESS = "delivery_address";
     private static final int REQUEST_FOOD_DETAIL = 200;
@@ -90,7 +92,7 @@ public class HomeFragment extends Fragment {
         setupBanner();
         setupVouchers();
         setupCategories();
-        setupAllRecyclerViews();
+        setupRecyclerViews();
         loadFoodsFromFirebase();
         setupSearch();
         setupAddressClick();
@@ -101,6 +103,7 @@ public class HomeFragment extends Fragment {
 
     private void initViews(View view) {
         bannerViewPager = view.findViewById(R.id.bannerViewPager);
+        tabLayout = view.findViewById(R.id.tabLayout);
         rvFlashSale = view.findViewById(R.id.rvFlashSale);
         rvHotDeals = view.findViewById(R.id.rvHotDeals);
         rvVouchers = view.findViewById(R.id.rvVouchers);
@@ -117,14 +120,17 @@ public class HomeFragment extends Fragment {
         tvStatus.setVisibility(View.VISIBLE);
     }
 
+    // ✅ TỪ AN: Setup banner với TabLayout
     private void setupBanner() {
         List<Banner> bannerList = new ArrayList<>();
-        bannerList.add(new Banner(1, "sale_50", "🎉 GIẢM 50%"));
-        bannerList.add(new Banner(2, "freeship", "🚚 FREESHIP 0Đ"));
+        bannerList.add(new Banner(1, "sale_50", "🎉 GIẢM 50% - Món ngon giá sốc"));
+        bannerList.add(new Banner(2, "freeship", "🚚 FREESHIP 0Đ - Đơn từ 50K"));
         bannerList.add(new Banner(3, "mua_1_tang_1", "🎁 MUA 1 TẶNG 1"));
+        bannerList.add(new Banner(4, "new_mem", "👤 NGƯỜI MỚI - Giảm thêm 50K"));
 
         bannerAdapter = new BannerAdapter(bannerList);
         bannerViewPager.setAdapter(bannerAdapter);
+
 
         bannerRunnable = () -> {
             int current = bannerViewPager.getCurrentItem();
@@ -171,6 +177,26 @@ public class HomeFragment extends Fragment {
         rvCategories.setAdapter(categoryAdapter);
     }
 
+    private void setupRecyclerViews() {
+        // Flash Sale - Dọc
+        LinearLayoutManager flashLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
+        rvFlashSale.setLayoutManager(flashLayout);
+        flashSaleAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
+        rvFlashSale.setAdapter(flashSaleAdapter);
+
+        // Hot Deals - Dọc
+        LinearLayoutManager hotLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
+        rvHotDeals.setLayoutManager(hotLayout);
+        hotDealAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
+        rvHotDeals.setAdapter(hotDealAdapter);
+
+        // All Foods - Dọc
+        LinearLayoutManager allLayout = new LinearLayoutManager(getContext());
+        rvAllFoods.setLayoutManager(allLayout);
+        allFoodsAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
+        rvAllFoods.setAdapter(allFoodsAdapter);
+    }
+
     private FoodAdapter.OnItemClickListener getOnItemClick() {
         return food -> {
             Intent intent = new Intent(getContext(), FoodDetailActivity.class);
@@ -188,38 +214,7 @@ public class HomeFragment extends Fragment {
         };
     }
 
-    private void setupAllRecyclerViews() {
-        // Flash Sale - Dọc
-        LinearLayoutManager flashLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
-        rvFlashSale.setLayoutManager(flashLayout);
-        flashSaleAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
-        rvFlashSale.setAdapter(flashSaleAdapter);
-        Log.d("HomeFragment", "Flash Sale RecyclerView setup completed");
-
-        // Hot Deals - Dọc
-        LinearLayoutManager hotLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
-        rvHotDeals.setLayoutManager(hotLayout);
-        hotDealAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
-        rvHotDeals.setAdapter(hotDealAdapter);
-        Log.d("HomeFragment", "Hot Deal RecyclerView setup completed");
-
-        // Vouchers - Ngang
-        LinearLayoutManager voucherLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-        rvVouchers.setLayoutManager(voucherLayout);
-
-        // Categories - Ngang
-        LinearLayoutManager categoryLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-        rvCategories.setLayoutManager(categoryLayout);
-
-        // All Foods - Dọc
-        LinearLayoutManager allLayout = new LinearLayoutManager(getContext());
-        rvAllFoods.setLayoutManager(allLayout);
-        allFoodsAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
-        rvAllFoods.setAdapter(allFoodsAdapter);
-
-        Log.d("HomeFragment", "All RecyclerViews setup completed");
-    }
-
+    // ✅ TỪ BẠN: Load dữ liệu từ Firebase
     private void loadFoodsFromFirebase() {
         tvStatus.setText("Đang tải món ăn...");
 
@@ -257,8 +252,6 @@ public class HomeFragment extends Fragment {
                 food.setRating(rating);
                 food.setRestaurantName(restaurantName);
                 allFoodsList.add(food);
-
-                Log.d("HomeFragment", "Loaded: " + name + " | soldCount: " + soldCount + " | rating: " + rating);
             }
 
             processAndDisplayData();
@@ -269,6 +262,7 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    // ✅ KẾT HỢP: Flash Sale top 5 bán chạy + Hot Deal top 10 rating
     private void processAndDisplayData() {
         if (allFoodsList.isEmpty()) {
             tvStatus.setText("Không có dữ liệu món ăn!");
@@ -278,59 +272,34 @@ public class HomeFragment extends Fragment {
         Log.d("HomeFragment", "========== PROCESSING DATA ==========");
         Log.d("HomeFragment", "Total foods: " + allFoodsList.size());
 
-        // ========== TEST: GÁN TRỰC TIẾP DANH SÁCH VÀO FLASH SALE ==========
-        List<Food> testList = new ArrayList<>();
-        for (int i = 0; i < Math.min(5, allFoodsList.size()); i++) {
-            testList.add(allFoodsList.get(i));
-            Log.d("HomeFragment", "TEST - Add to Flash Sale: " + allFoodsList.get(i).getName());
+        // 1. FLASH SALE: Top 5 bán chạy nhất (soldCount cao nhất)
+        List<Food> flashList = new ArrayList<>(allFoodsList);
+        Collections.sort(flashList, (a, b) -> Integer.compare(b.getSoldCount(), a.getSoldCount()));
+        List<Food> flashLimited = new ArrayList<>();
+        for (int i = 0; i < Math.min(5, flashList.size()); i++) {
+            flashLimited.add(flashList.get(i));
+            Log.d("HomeFragment", "Flash Sale: " + flashList.get(i).getName() + " (sold: " + flashList.get(i).getSoldCount() + ")");
         }
+        flashSaleAdapter.updateList(flashLimited);
 
-        // Tạo adapter mới mỗi lần để chắc chắn
-        LinearLayoutManager flashLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
-        rvFlashSale.setLayoutManager(flashLayout);
-        flashSaleAdapter = new FoodAdapter(testList, getOnItemClick(), getOnAddToCart());
-        rvFlashSale.setAdapter(flashSaleAdapter);
-
-        Log.d("HomeFragment", "Flash Sale adapter count: " + flashSaleAdapter.getItemCount());
-
-        // ========== HOT DEAL (giữ nguyên) ==========
+        // 2. HOT DEAL: Top 10 rating cao nhất
         List<Food> hotList = new ArrayList<>(allFoodsList);
         Collections.sort(hotList, (a, b) -> Double.compare(b.getRating(), a.getRating()));
         List<Food> hotLimited = new ArrayList<>();
         for (int i = 0; i < Math.min(10, hotList.size()); i++) {
             hotLimited.add(hotList.get(i));
+            Log.d("HomeFragment", "Hot Deal: " + hotList.get(i).getName() + " (rating: " + hotList.get(i).getRating() + ")");
         }
+        hotDealAdapter.updateList(hotLimited);
 
-        if (hotDealAdapter == null) {
-            LinearLayoutManager hotLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
-            rvHotDeals.setLayoutManager(hotLayout);
-            hotDealAdapter = new FoodAdapter(hotLimited, getOnItemClick(), getOnAddToCart());
-            rvHotDeals.setAdapter(hotDealAdapter);
-        } else {
-            hotDealAdapter.updateList(hotLimited);
-        }
-
-        // ========== TẤT CẢ MÓN ĂN ==========
-        if (allFoodsAdapter == null) {
-            LinearLayoutManager allLayout = new LinearLayoutManager(getContext());
-            rvAllFoods.setLayoutManager(allLayout);
-            allFoodsAdapter = new FoodAdapter(allFoodsList, getOnItemClick(), getOnAddToCart());
-            rvAllFoods.setAdapter(allFoodsAdapter);
-        } else {
-            allFoodsAdapter.updateList(allFoodsList);
-        }
-
-        // Force refresh RecyclerView
-        rvFlashSale.invalidate();
-        rvFlashSale.requestLayout();
-
-        Log.d("HomeFragment", "Flash Sale final count: " + flashSaleAdapter.getItemCount());
-        Log.d("HomeFragment", "========== PROCESSING DONE ==========");
+        // 3. TẤT CẢ MÓN ĂN
+        allFoodsAdapter.updateList(allFoodsList);
 
         tvStatus.setVisibility(View.GONE);
         Toast.makeText(getContext(), "Loaded " + allFoodsList.size() + " items", Toast.LENGTH_SHORT).show();
     }
 
+    // ✅ TỪ AN: Lọc danh sách theo category
     private void filterAllFoodsByCategory(String category) {
         List<Food> filtered = new ArrayList<>();
         for (Food food : allFoodsList) {
@@ -339,9 +308,20 @@ public class HomeFragment extends Fragment {
             }
         }
         allFoodsAdapter.updateList(filtered);
-        allFoodsAdapter.notifyDataSetChanged();
-        Toast.makeText(getContext(), category + ": " + filtered.size() + " món", Toast.LENGTH_SHORT).show();
+        String icon = getCategoryIcon(category);
+        Toast.makeText(getContext(), icon + " " + category + ": " + filtered.size() + " món", Toast.LENGTH_SHORT).show();
         Log.d("HomeFragment", "Filter by " + category + ": " + filtered.size() + " items");
+    }
+
+    private String getCategoryIcon(String category) {
+        switch (category) {
+            case "Fast Food": return "🍔";
+            case "Món Việt": return "🍜";
+            case "Đồ uống": return "☕";
+            case "Tráng miệng": return "🍰";
+            case "Hải sản": return "🦞";
+            default: return "🍕";
+        }
     }
 
     private void setupSearch() {
@@ -365,7 +345,6 @@ public class HomeFragment extends Fragment {
                     }
                     allFoodsAdapter.updateList(filtered);
                 }
-                allFoodsAdapter.notifyDataSetChanged();
             }
 
             @Override
@@ -375,7 +354,6 @@ public class HomeFragment extends Fragment {
         ivClearSearch.setOnClickListener(v -> {
             etSearch.setText("");
             allFoodsAdapter.updateList(allFoodsList);
-            allFoodsAdapter.notifyDataSetChanged();
         });
     }
 
@@ -383,13 +361,10 @@ public class HomeFragment extends Fragment {
         layoutAddress.setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("Nhập địa chỉ giao hàng");
-
             final EditText input = new EditText(getContext());
             input.setHint("Ví dụ: Số 123, Đường ABC, Phường XYZ");
             input.setText(currentAddress.equals("Chọn địa chỉ") ? "" : currentAddress);
-
             builder.setView(input);
-
             builder.setPositiveButton("Lưu", (dialog, which) -> {
                 String newAddress = input.getText().toString().trim();
                 if (!newAddress.isEmpty()) {

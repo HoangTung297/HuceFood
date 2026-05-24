@@ -1,48 +1,62 @@
 package com.example.foodorder.adapter;
 
-import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
-import android.widget.ImageButton;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
 import com.example.foodorder.R;
 import com.example.foodorder.model.CartItem;
-import com.example.foodorder.model.Food;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 
 public class ProductItemAdapter extends RecyclerView.Adapter<ProductItemAdapter.ViewHolder> {
 
     private List<CartItem> items;
-    private OnProductItemChangeListener listener;
+    private OnItemClickListener listener;
+    private OnQuantityChangeListener quantityListener;
+    private OnItemDeleteListener deleteListener;
 
-    public interface OnProductItemChangeListener {
-        void onQuantityChange(CartItem item, int newQuantity);
-        void onDelete(CartItem item);
-        void onNoteChange(CartItem item, String note);
+    public interface OnItemClickListener {
+        void onItemClick(CartItem item);
     }
 
-    public ProductItemAdapter(List<CartItem> items, OnProductItemChangeListener listener) {
+    public interface OnQuantityChangeListener {
+        void onQuantityChanged(CartItem item, int newQuantity);
+    }
+
+    public interface OnItemDeleteListener {
+        void onDeleteClick(CartItem item, int position);
+    }
+
+    public ProductItemAdapter(List<CartItem> items,
+                              OnItemClickListener listener,
+                              OnQuantityChangeListener quantityListener,
+                              OnItemDeleteListener deleteListener) {
         this.items = items;
         this.listener = listener;
+        this.quantityListener = quantityListener;
+        this.deleteListener = deleteListener;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_cart_product, parent, false);
-        return new ViewHolder(view, listener);
+                .inflate(R.layout.item_cart, parent, false);
+        return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        CartItem cartItem = items.get(position);
-        holder.bind(cartItem);
+        CartItem item = items.get(position);
+        holder.bind(item, listener, quantityListener, deleteListener, position);
     }
 
     @Override
@@ -50,16 +64,18 @@ public class ProductItemAdapter extends RecyclerView.Adapter<ProductItemAdapter.
         return items.size();
     }
 
+    public void updateList(List<CartItem> newList) {
+        this.items = newList;
+        notifyDataSetChanged();
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivFoodImage;
         TextView tvFoodName, tvNote, tvPrice, tvQuantity;
-        ImageButton btnDecrease, btnIncrease, btnDelete;
-        private OnProductItemChangeListener listener;
+        Button btnDecrease, btnIncrease, btnDelete;
 
-        ViewHolder(@NonNull View itemView, OnProductItemChangeListener listener) {
+        ViewHolder(@NonNull View itemView) {
             super(itemView);
-            this.listener = listener;
-
             ivFoodImage = itemView.findViewById(R.id.ivFoodImage);
             tvFoodName = itemView.findViewById(R.id.tvFoodName);
             tvNote = itemView.findViewById(R.id.tvNote);
@@ -70,59 +86,60 @@ public class ProductItemAdapter extends RecyclerView.Adapter<ProductItemAdapter.
             btnDelete = itemView.findViewById(R.id.btnDelete);
         }
 
-        void bind(CartItem cartItem) {
-            Food food = cartItem.getFood();
-            tvFoodName.setText(food.getName());
-            tvPrice.setText(String.format("%,.0fđ", food.getPrice()));
-            tvQuantity.setText(String.valueOf(cartItem.getQuantity()));
+        void bind(CartItem item,
+                  OnItemClickListener listener,
+                  OnQuantityChangeListener quantityListener,
+                  OnItemDeleteListener deleteListener,
+                  int position) {
 
-            if (cartItem.getNote() != null && !cartItem.getNote().isEmpty()) {
-                tvNote.setVisibility(View.VISIBLE);
-                tvNote.setText("📝 " + cartItem.getNote());
-            } else {
-                tvNote.setVisibility(View.GONE);
+            tvFoodName.setText(item.getName());
+
+            NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+            tvPrice.setText(formatter.format(item.getPrice()) + "đ");
+            tvQuantity.setText(String.valueOf(item.getQuantity()));
+
+            // Ẩn ghi chú nếu không có (CartItem không có note, có thể bỏ qua)
+            tvNote.setVisibility(View.GONE);
+
+            // Load ảnh nếu có
+            if (item.getImageUrl() != null && !item.getImageUrl().isEmpty()) {
+                Glide.with(itemView.getContext())
+                        .load(item.getImageUrl())
+                        .placeholder(R.drawable.ic_food_default)
+                        .into(ivFoodImage);
             }
 
-            tvNote.setOnClickListener(v -> showNoteDialog(cartItem));
-
+            // Tăng số lượng
             btnIncrease.setOnClickListener(v -> {
-                int newQty = cartItem.getQuantity() + 1;
-                if (listener != null) {
-                    listener.onQuantityChange(cartItem, newQty);
+                if (quantityListener != null) {
+                    int newQuantity = item.getQuantity() + 1;
+                    item.setQuantity(newQuantity);
+                    quantityListener.onQuantityChanged(item, newQuantity);
+                    tvQuantity.setText(String.valueOf(newQuantity));
                 }
             });
 
+            // Giảm số lượng
             btnDecrease.setOnClickListener(v -> {
-                int newQty = cartItem.getQuantity() - 1;
-                if (listener != null) {
-                    listener.onQuantityChange(cartItem, newQty);
+                if (quantityListener != null && item.getQuantity() > 1) {
+                    int newQuantity = item.getQuantity() - 1;
+                    item.setQuantity(newQuantity);
+                    quantityListener.onQuantityChanged(item, newQuantity);
+                    tvQuantity.setText(String.valueOf(newQuantity));
                 }
             });
 
+            // Xóa item
             btnDelete.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onDelete(cartItem);
+                if (deleteListener != null) {
+                    deleteListener.onDeleteClick(item, position);
                 }
             });
-        }
 
-        private void showNoteDialog(CartItem cartItem) {
-            AlertDialog.Builder builder = new AlertDialog.Builder(itemView.getContext());
-            builder.setTitle("Ghi chú cho món");
-
-            final EditText input = new EditText(itemView.getContext());
-            input.setHint("VD: ít đường, không hành, thêm tương...");
-            input.setText(cartItem.getNote());
-            builder.setView(input);
-
-            builder.setPositiveButton("Lưu", (dialog, which) -> {
-                String note = input.getText().toString();
-                if (listener != null) {
-                    listener.onNoteChange(cartItem, note);
-                }
-            });
-            builder.setNegativeButton("Hủy", null);
-            builder.show();
+            // Click vào item
+            if (listener != null) {
+                itemView.setOnClickListener(v -> listener.onItemClick(item));
+            }
         }
     }
 }

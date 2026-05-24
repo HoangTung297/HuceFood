@@ -3,51 +3,33 @@ package com.example.foodorder.model;
 import java.io.Serializable;
 
 public class CartItem implements Serializable {
-    private Food food;
+    private String foodId;
+    private String name;
+    private double price;
     private int quantity;
-    private String note;
-    private double totalPrice;
     private String restaurantId;
-    private String restaurantName;
+    private String imageUrl;
+    private String note;  // Thêm field ghi chú
 
-    public CartItem(Food food, int quantity) {
-        this.food = food;
-        this.quantity = quantity;
-        this.note = "";
-        this.restaurantId = String.valueOf(food.getRestaurantId());
-        this.restaurantName = food.getRestaurantName();
-        calculateTotalPrice();
-    }
+    public CartItem() {}
 
-    private void calculateTotalPrice() {
-        this.totalPrice = food.getPrice() * quantity;
-    }
-
-    public Food getFood() { return food; }
+    // Getters
+    public String getFoodId() { return foodId; }
+    public String getName() { return name; }
+    public double getPrice() { return price; }
     public int getQuantity() { return quantity; }
-    public String getNote() { return note; }
-    public double getTotalPrice() { return totalPrice; }
     public String getRestaurantId() { return restaurantId; }
-    public String getRestaurantName() { return restaurantName; }
+    public String getImageUrl() { return imageUrl; }
+    public String getNote() { return note; }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-        calculateTotalPrice();
-    }
+    // Setters
+    public void setFoodId(String foodId) { this.foodId = foodId; }
+    public void setName(String name) { this.name = name; }
+    public void setPrice(double price) { this.price = price; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public void setRestaurantId(String restaurantId) { this.restaurantId = restaurantId; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setNote(String note) { this.note = note; }
 
-    public void setNote(String note) {
-        this.note = note;
-    }
-
-    public void incrementQuantity() {
-        this.quantity++;
-        calculateTotalPrice();
-    }
-
-    public void decrementQuantity() {
-        if (this.quantity > 1) {
-            this.quantity--;
-            calculateTotalPrice();
-        }
-    }
+    public double getTotalPrice() { return price * quantity; }
 }

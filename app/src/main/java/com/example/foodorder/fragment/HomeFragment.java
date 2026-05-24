@@ -1,13 +1,13 @@
 package com.example.foodorder.fragment;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +24,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.foodorder.FoodDetailActivity;
 import com.example.foodorder.HomeActivity;
 import com.example.foodorder.R;
+import com.example.foodorder.SearchActivity;
 import com.example.foodorder.adapter.BannerAdapter;
 import com.example.foodorder.adapter.CategoryAdapter;
 import com.example.foodorder.adapter.FoodAdapter;
@@ -32,8 +33,7 @@ import com.example.foodorder.model.Banner;
 import com.example.foodorder.model.Category;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.model.Voucher;
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
+import com.example.foodorder.utils.CacheManager;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
@@ -42,36 +42,39 @@ import java.util.List;
 
 public class HomeFragment extends Fragment {
 
-    // ============ VIEWS ============
+    // Views
     private ViewPager2 bannerViewPager;
-    private TabLayout tabLayout;
     private RecyclerView rvFlashSale, rvHotDeals, rvVouchers, rvCategories, rvAllFoods;
     private TextView tvAddress, tvStatus;
-    private ImageView ivAvatar, ivClearSearch;
+    private ImageView ivAvatar, ivClearSearch, ivSearchIcon;
     private EditText etSearch;
     private View layoutAddress;
 
-    // ============ DATA ============
+    // Data
     private List<Food> allFoodsList;
     private List<Voucher> voucherList;
 
-    // ============ ADAPTERS ============
     private FoodAdapter flashSaleAdapter, hotDealAdapter, allFoodsAdapter;
     private VoucherAdapter voucherAdapter;
     private CategoryAdapter categoryAdapter;
     private BannerAdapter bannerAdapter;
 
-    // ============ FIREBASE & BANNER ============
+    // Firebase
     private FirebaseFirestore firestore;
+    private CacheManager cacheManager;
+
+    // Banner auto slide
     private Handler bannerHandler = new Handler();
     private Runnable bannerRunnable;
 
-    // ============ SHARED PREFERENCES ============
+    // SharedPreferences
     private SharedPreferences sharedPreferences;
     private static final String KEY_ADDRESS = "delivery_address";
     private static final int REQUEST_FOOD_DETAIL = 200;
 
     private String currentAddress = "";
+    private String currentUserId = "";
+    private boolean isLoading = false;
 
     @Nullable
     @Override
@@ -83,17 +86,23 @@ public class HomeFragment extends Fragment {
 
         firestore = FirebaseFirestore.getInstance();
 
+        // Khởi tạo cache
+        if (getContext() != null) {
+            cacheManager = new CacheManager(getContext());
+        }
+
         if (getActivity() != null) {
             sharedPreferences = getActivity().getSharedPreferences("UserPrefs", 0);
             currentAddress = sharedPreferences.getString(KEY_ADDRESS, "Chọn địa chỉ");
+            currentUserId = sharedPreferences.getString("user_id", "");
         }
 
         initViews(view);
         setupBanner();
-        setupVouchers();
         setupCategories();
         setupRecyclerViews();
-        loadFoodsFromFirebase();
+        loadVouchers();
+        loadFoods();
         setupSearch();
         setupAddressClick();
         setupAvatarClick();
@@ -103,7 +112,6 @@ public class HomeFragment extends Fragment {
 
     private void initViews(View view) {
         bannerViewPager = view.findViewById(R.id.bannerViewPager);
-        tabLayout = view.findViewById(R.id.tabLayout);
         rvFlashSale = view.findViewById(R.id.rvFlashSale);
         rvHotDeals = view.findViewById(R.id.rvHotDeals);
         rvVouchers = view.findViewById(R.id.rvVouchers);
@@ -118,19 +126,19 @@ public class HomeFragment extends Fragment {
 
         tvAddress.setText(currentAddress);
         tvStatus.setVisibility(View.VISIBLE);
+
+        // Ẩn nút clear search vì không dùng realtime nữa
+        ivClearSearch.setVisibility(View.GONE);
     }
 
-    // ✅ TỪ AN: Setup banner với TabLayout
     private void setupBanner() {
         List<Banner> bannerList = new ArrayList<>();
-        bannerList.add(new Banner(1, "sale_50", "🎉 GIẢM 50% - Món ngon giá sốc"));
-        bannerList.add(new Banner(2, "freeship", "🚚 FREESHIP 0Đ - Đơn từ 50K"));
+        bannerList.add(new Banner(1, "sale_50", "🎉 GIẢM 50%"));
+        bannerList.add(new Banner(2, "freeship", "🚚 FREESHIP 0Đ"));
         bannerList.add(new Banner(3, "mua_1_tang_1", "🎁 MUA 1 TẶNG 1"));
-        bannerList.add(new Banner(4, "new_mem", "👤 NGƯỜI MỚI - Giảm thêm 50K"));
 
         bannerAdapter = new BannerAdapter(bannerList);
         bannerViewPager.setAdapter(bannerAdapter);
-
 
         bannerRunnable = () -> {
             int current = bannerViewPager.getCurrentItem();
@@ -150,17 +158,6 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void setupVouchers() {
-        voucherList = new ArrayList<>();
-        voucherList.add(new Voucher(1, "Gà Rán KFC", "-50%", "1 BÁNH TRƯNG 9K"));
-        voucherList.add(new Voucher(2, "Gà Rán Popeyes", "-50%", "1 MIẾNG GÀ"));
-        voucherList.add(new Voucher(3, "Combo 2 Gà", "-35%", "64K"));
-
-        voucherAdapter = new VoucherAdapter(voucherList);
-        rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-        rvVouchers.setAdapter(voucherAdapter);
-    }
-
     private void setupCategories() {
         List<Category> categoryList = new ArrayList<>();
         categoryList.add(new Category(1, "Tất cả", "🍕", 0));
@@ -178,19 +175,16 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
-        // Flash Sale - Dọc
         LinearLayoutManager flashLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
         rvFlashSale.setLayoutManager(flashLayout);
         flashSaleAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
         rvFlashSale.setAdapter(flashSaleAdapter);
 
-        // Hot Deals - Dọc
         LinearLayoutManager hotLayout = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
         rvHotDeals.setLayoutManager(hotLayout);
         hotDealAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
         rvHotDeals.setAdapter(hotDealAdapter);
 
-        // All Foods - Dọc
         LinearLayoutManager allLayout = new LinearLayoutManager(getContext());
         rvAllFoods.setLayoutManager(allLayout);
         allFoodsAdapter = new FoodAdapter(new ArrayList<>(), getOnItemClick(), getOnAddToCart());
@@ -209,97 +203,158 @@ public class HomeFragment extends Fragment {
         return food -> {
             if (getActivity() instanceof HomeActivity) {
                 ((HomeActivity) getActivity()).addToCart(food);
-                Toast.makeText(getContext(), "Đã thêm " + food.getName(), Toast.LENGTH_SHORT).show();
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Đã thêm " + food.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
+                }
             }
         };
     }
 
-    // ✅ TỪ BẠN: Load dữ liệu từ Firebase
-    private void loadFoodsFromFirebase() {
-        tvStatus.setText("Đang tải món ăn...");
-
-        firestore.collection("foods").get().addOnSuccessListener(queryDocumentSnapshots -> {
-            allFoodsList.clear();
-
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                String name = doc.getString("name");
-                if (name == null) name = "Món ăn";
-
-                String description = doc.getString("description");
-                if (description == null) description = "";
-
-                Double price = doc.getDouble("price");
-                if (price == null) price = 0.0;
-
-                String category = doc.getString("category");
-                if (category == null) category = "Khác";
-
-                String imageUrl = doc.getString("imageUrl");
-                if (imageUrl == null) imageUrl = "";
-
-                Long soldCount = doc.getLong("soldCount");
-                if (soldCount == null) soldCount = 0L;
-
-                Double rating = doc.getDouble("rating");
-                if (rating == null) rating = 0.0;
-
-                String restaurantName = doc.getString("restaurant");
-                if (restaurantName == null) restaurantName = "Nhà hàng";
-
-                Food food = new Food(doc.getId(), name, description, price, category, "");
-                food.setImageUrl(imageUrl);
-                food.setSoldCount(soldCount.intValue());
-                food.setRating(rating);
-                food.setRestaurantName(restaurantName);
-                allFoodsList.add(food);
-            }
-
-            processAndDisplayData();
-
-        }).addOnFailureListener(e -> {
-            tvStatus.setText("Lỗi: " + e.getMessage());
-            Log.e("HomeFragment", "Firebase error: " + e.getMessage());
-        });
-    }
-
-    // ✅ KẾT HỢP: Flash Sale top 5 bán chạy + Hot Deal top 10 rating
-    private void processAndDisplayData() {
-        if (allFoodsList.isEmpty()) {
-            tvStatus.setText("Không có dữ liệu món ăn!");
+    private void loadVouchers() {
+        if (!isNetworkAvailable()) {
+            loadVouchersFromCache();
             return;
         }
 
-        Log.d("HomeFragment", "========== PROCESSING DATA ==========");
-        Log.d("HomeFragment", "Total foods: " + allFoodsList.size());
+        firestore.collection("vouchers")
+                .whereEqualTo("isActive", true)
+                .limit(10)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    voucherList.clear();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Voucher voucher = new Voucher();
+                        voucher.setId(doc.getId());
+                        voucher.setCode(doc.getString("code"));
+                        voucher.setTitle(doc.getString("title"));
+                        voucher.setDescription(doc.getString("description"));
+                        voucher.setDiscountType(doc.getString("discountType"));
 
-        // 1. FLASH SALE: Top 5 bán chạy nhất (soldCount cao nhất)
-        List<Food> flashList = new ArrayList<>(allFoodsList);
-        Collections.sort(flashList, (a, b) -> Integer.compare(b.getSoldCount(), a.getSoldCount()));
-        List<Food> flashLimited = new ArrayList<>();
-        for (int i = 0; i < Math.min(5, flashList.size()); i++) {
-            flashLimited.add(flashList.get(i));
-            Log.d("HomeFragment", "Flash Sale: " + flashList.get(i).getName() + " (sold: " + flashList.get(i).getSoldCount() + ")");
-        }
-        flashSaleAdapter.updateList(flashLimited);
+                        Double discountValue = doc.getDouble("discountValue");
+                        voucher.setDiscountValue(discountValue != null ? discountValue : 0);
 
-        // 2. HOT DEAL: Top 10 rating cao nhất
-        List<Food> hotList = new ArrayList<>(allFoodsList);
-        Collections.sort(hotList, (a, b) -> Double.compare(b.getRating(), a.getRating()));
-        List<Food> hotLimited = new ArrayList<>();
-        for (int i = 0; i < Math.min(10, hotList.size()); i++) {
-            hotLimited.add(hotList.get(i));
-            Log.d("HomeFragment", "Hot Deal: " + hotList.get(i).getName() + " (rating: " + hotList.get(i).getRating() + ")");
-        }
-        hotDealAdapter.updateList(hotLimited);
+                        Double minOrder = doc.getDouble("minOrder");
+                        voucher.setMinOrder(minOrder != null ? minOrder : 0);
 
-        // 3. TẤT CẢ MÓN ĂN
-        allFoodsAdapter.updateList(allFoodsList);
+                        voucher.setActive(true);
+                        voucherList.add(voucher);
+                    }
 
-        tvStatus.setVisibility(View.GONE);
-        Toast.makeText(getContext(), "Loaded " + allFoodsList.size() + " items", Toast.LENGTH_SHORT).show();
+                    if (cacheManager != null && !voucherList.isEmpty()) {
+                        cacheManager.cacheVouchers(voucherList);
+                    }
+
+                    updateVoucherUI();
+                })
+                .addOnFailureListener(e -> loadVouchersFromCache());
     }
 
-    // ✅ TỪ AN: Lọc danh sách theo category
+    private void loadVouchersFromCache() {
+        if (cacheManager != null) {
+            List<Voucher> cached = cacheManager.getCachedVouchers();
+            if (cached != null && !cached.isEmpty()) {
+                voucherList.clear();
+                voucherList.addAll(cached);
+                updateVoucherUI();
+            }
+        }
+    }
+
+    private void updateVoucherUI() {
+        if (voucherAdapter == null) {
+            voucherAdapter = new VoucherAdapter(voucherList);
+            rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            rvVouchers.setAdapter(voucherAdapter);
+        } else {
+            voucherAdapter.updateList(voucherList);
+        }
+    }
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm != null) {
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            return activeNetwork != null && activeNetwork.isConnected();
+        }
+        return false;
+    }
+
+    private void loadFoods() {
+        if (isLoading) return;
+
+        if (cacheManager != null) {
+            List<Food> cached = cacheManager.getCachedFoods();
+            if (cached != null && !cached.isEmpty()) {
+                allFoodsList.clear();
+                allFoodsList.addAll(cached);
+                processAndDisplayData();
+                tvStatus.setVisibility(View.GONE);
+                return;
+            }
+        }
+
+        isLoading = true;
+        tvStatus.setText("Đang tải món ăn...");
+        tvStatus.setVisibility(View.VISIBLE);
+
+        firestore.collection("foods").limit(100).get()
+                .addOnSuccessListener(query -> {
+                    allFoodsList.clear();
+                    for (QueryDocumentSnapshot doc : query) {
+                        String name = doc.getString("name");
+                        String desc = doc.getString("description");
+                        Double price = doc.getDouble("price");
+                        String category = doc.getString("category");
+                        String imageUrl = doc.getString("imageUrl");
+                        Long soldCount = doc.getLong("soldCount");
+                        Double rating = doc.getDouble("rating");
+                        String restaurantName = doc.getString("restaurant");
+
+                        Food food = new Food(doc.getId(),
+                                name != null ? name : "Món ăn",
+                                desc != null ? desc : "",
+                                price != null ? price : 0,
+                                category != null ? category : "Khác",
+                                "");
+                        food.setImageUrl(imageUrl != null ? imageUrl : "");
+                        food.setSoldCount(soldCount != null ? soldCount.intValue() : 0);
+                        food.setRating(rating != null ? rating : 0);
+                        food.setRestaurantName(restaurantName != null ? restaurantName : "Nhà hàng");
+                        allFoodsList.add(food);
+                    }
+
+                    if (cacheManager != null && !allFoodsList.isEmpty()) {
+                        cacheManager.cacheFoods(allFoodsList);
+                    }
+
+                    processAndDisplayData();
+                    isLoading = false;
+                })
+                .addOnFailureListener(e -> {
+                    tvStatus.setText("Lỗi: " + e.getMessage());
+                    isLoading = false;
+                });
+    }
+
+    private void processAndDisplayData() {
+        if (getContext() == null) return;
+        if (allFoodsList.isEmpty()) return;
+
+        // Flash Sale: Top 5 bán chạy
+        List<Food> flashList = new ArrayList<>(allFoodsList);
+        Collections.sort(flashList, (a, b) -> Integer.compare(b.getSoldCount(), a.getSoldCount()));
+        flashSaleAdapter.updateList(flashList.size() > 5 ? flashList.subList(0, 5) : flashList);
+
+        // Hot Deal: Top 10 rating cao
+        List<Food> hotList = new ArrayList<>(allFoodsList);
+        Collections.sort(hotList, (a, b) -> Double.compare(b.getRating(), a.getRating()));
+        hotDealAdapter.updateList(hotList.size() > 10 ? hotList.subList(0, 10) : hotList);
+
+        // Tất cả
+        allFoodsAdapter.updateList(allFoodsList);
+        tvStatus.setVisibility(View.GONE);
+    }
+
     private void filterAllFoodsByCategory(String category) {
         List<Food> filtered = new ArrayList<>();
         for (Food food : allFoodsList) {
@@ -308,61 +363,37 @@ public class HomeFragment extends Fragment {
             }
         }
         allFoodsAdapter.updateList(filtered);
-        String icon = getCategoryIcon(category);
-        Toast.makeText(getContext(), icon + " " + category + ": " + filtered.size() + " món", Toast.LENGTH_SHORT).show();
-        Log.d("HomeFragment", "Filter by " + category + ": " + filtered.size() + " items");
-    }
-
-    private String getCategoryIcon(String category) {
-        switch (category) {
-            case "Fast Food": return "🍔";
-            case "Món Việt": return "🍜";
-            case "Đồ uống": return "☕";
-            case "Tráng miệng": return "🍰";
-            case "Hải sản": return "🦞";
-            default: return "🍕";
-        }
+        Toast.makeText(getContext(), category + ": " + filtered.size() + " món", Toast.LENGTH_SHORT).show();
     }
 
     private void setupSearch() {
-        etSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String query = s.toString().toLowerCase().trim();
-                if (query.isEmpty()) {
-                    ivClearSearch.setVisibility(View.GONE);
-                    allFoodsAdapter.updateList(allFoodsList);
-                } else {
-                    ivClearSearch.setVisibility(View.VISIBLE);
-                    List<Food> filtered = new ArrayList<>();
-                    for (Food food : allFoodsList) {
-                        if (food.getName().toLowerCase().contains(query)) {
-                            filtered.add(food);
-                        }
-                    }
-                    allFoodsAdapter.updateList(filtered);
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
+        // Khi click vào thanh tìm kiếm, mở SearchActivity
+        etSearch.setOnClickListener(v -> {
+            Intent intent = new Intent(getContext(), SearchActivity.class);
+            startActivity(intent);
         });
 
-        ivClearSearch.setOnClickListener(v -> {
-            etSearch.setText("");
-            allFoodsAdapter.updateList(allFoodsList);
-        });
+        // Khi click vào icon tìm kiếm, mở SearchActivity
+        if (ivSearchIcon != null) {
+            ivSearchIcon.setOnClickListener(v -> {
+                Intent intent = new Intent(getContext(), SearchActivity.class);
+                startActivity(intent);
+            });
+        }
+
+        // Làm cho thanh tìm kiếm không thể nhập (chỉ để click)
+        etSearch.setFocusable(false);
+        etSearch.setFocusableInTouchMode(false);
+        etSearch.setCursorVisible(false);
     }
 
     private void setupAddressClick() {
         layoutAddress.setOnClickListener(v -> {
+            if (getContext() == null) return;
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("Nhập địa chỉ giao hàng");
             final EditText input = new EditText(getContext());
-            input.setHint("Ví dụ: Số 123, Đường ABC, Phường XYZ");
+            input.setHint("Ví dụ: Số 123, Đường ABC");
             input.setText(currentAddress.equals("Chọn địa chỉ") ? "" : currentAddress);
             builder.setView(input);
             builder.setPositiveButton("Lưu", (dialog, which) -> {
@@ -371,9 +402,7 @@ public class HomeFragment extends Fragment {
                     sharedPreferences.edit().putString(KEY_ADDRESS, newAddress).apply();
                     tvAddress.setText(newAddress);
                     currentAddress = newAddress;
-                    Toast.makeText(getContext(), "Đã cập nhật địa chỉ: " + newAddress, Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(getContext(), "Vui lòng nhập địa chỉ", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Đã cập nhật địa chỉ", Toast.LENGTH_SHORT).show();
                 }
             });
             builder.setNegativeButton("Hủy", null);

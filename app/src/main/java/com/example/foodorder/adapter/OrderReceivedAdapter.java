@@ -9,69 +9,90 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
+import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class OrderReceivedAdapter extends RecyclerView.Adapter<OrderReceivedAdapter.ViewHolder> {
 
-    private List<Order> orders;
-    private OnReorderClickListener listener;
+    private List<Order> orderList;
+    private OnReorderListener listener;
 
-    public interface OnReorderClickListener {
-        void onReorderClick(Order order);
+    public interface OnReorderListener {
+        void onReorder(Order order);
     }
 
-    public OrderReceivedAdapter(List<Order> orders) {
-        this.orders = orders;
-    }
-
-    public void setOnReorderClickListener(OnReorderClickListener listener) {
+    public OrderReceivedAdapter(List<Order> orderList, OnReorderListener listener) {
+        this.orderList = orderList;
         this.listener = listener;
-    }
-
-    public void updateList(List<Order> newList) {
-        this.orders = newList;
-        notifyDataSetChanged();
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_order_received, parent, false);
+                .inflate(R.layout.item_received_order, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Order order = orders.get(position);
+        Order order = orderList.get(position);
         holder.bind(order, listener);
     }
 
     @Override
     public int getItemCount() {
-        return orders.size();
+        return orderList.size();
+    }
+
+    public void updateList(List<Order> newList) {
+        this.orderList = newList;
+        notifyDataSetChanged();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvOrderId, tvOrderDate, tvTotalPrice;
+        TextView tvOrderId, tvOrderDate, tvRestaurantName, tvFoodItems, tvTotalPrice;
         Button btnReorder;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvOrderId = itemView.findViewById(R.id.tvOrderId);
             tvOrderDate = itemView.findViewById(R.id.tvOrderDate);
+            tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
+            tvFoodItems = itemView.findViewById(R.id.tvFoodItems);
             tvTotalPrice = itemView.findViewById(R.id.tvTotalPrice);
             btnReorder = itemView.findViewById(R.id.btnReorder);
         }
 
-        void bind(Order order, OnReorderClickListener listener) {
-            tvOrderId.setText("#ĐƠN" + order.getId());
-            tvOrderDate.setText(order.getOrderDate());
-            tvTotalPrice.setText(String.format("%,.0fđ", order.getTotalPrice()));
+        void bind(Order order, OnReorderListener listener) {
+            NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
 
-            if (listener != null) {
-                btnReorder.setOnClickListener(v -> listener.onReorderClick(order));
+            tvOrderId.setText("Mã đơn: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
+
+            // SỬA: Dùng long trực tiếp
+            long createdAt = order.getCreatedAt();
+            Date date = new Date(createdAt);
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+            tvOrderDate.setText(sdf.format(date));
+
+            tvRestaurantName.setText(order.getRestaurantName());
+
+            StringBuilder itemsText = new StringBuilder();
+            if (order.getItems() != null) {
+                for (Map<String, Object> item : order.getItems()) {
+                    String name = (String) item.get("name");
+                    long quantity = ((Number) item.get("quantity")).longValue();
+                    itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
+                }
             }
+            tvFoodItems.setText(itemsText.toString());
+            tvTotalPrice.setText(formatter.format(order.getFinalTotal()) + "đ");
+
+            btnReorder.setOnClickListener(v -> listener.onReorder(order));
         }
     }
 }

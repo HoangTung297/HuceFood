@@ -4,7 +4,7 @@
     android:layout_width="160dp"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
     <LinearLayout
@@ -14,30 +14,34 @@
         android:padding="12dp">
 
         <TextView
-            android:id="@+id/tvVoucherDiscount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="-50%"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@color/primary_color"/>
-
-        <TextView
             android:id="@+id/tvVoucherTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Gà Rán KFC"
-            android:textSize="14sp"
+            android:text="GIẢM 20%"
+            android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginTop="8dp"/>
+            android:textColor="#FF5722" />
+
+        <TextView
+            android:id="@+id/tvVoucherDiscount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-20%"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#FF5722"
+            android:layout_marginTop="4dp" />
 
         <TextView
             android:id="@+id/tvVoucherDescription"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1 BÁNH TRƯNG 9.000₫"
-            android:textSize="12sp"
-            android:textColor="@android:color/darker_gray"/>
+            android:text="Giảm 20% đơn từ 100k"
+            android:textSize="11sp"
+            android:textColor="#757575"
+            android:layout_marginTop="8dp"
+            android:maxLines="2"
+            android:ellipsize="end" />
 
     </LinearLayout>
 

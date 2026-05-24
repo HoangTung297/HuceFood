@@ -1,135 +1,148 @@
 package com.example.foodorder.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
-import com.example.foodorder.adapter.SuggestRestaurantAdapter;
-import com.example.foodorder.model.Restaurant;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.example.foodorder.adapter.OrderAdapter;
+import com.example.foodorder.model.Order;
+import com.example.foodorder.repository.FirebaseRepository;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class DeliveringFragment extends Fragment {
 
-    // ============ KHAI BÁO VIEW ============
-    private RecyclerView rvSuggestions;
-    private TextView tvOrderId;
-    private TextView tvRestaurantName;
-    private TextView tvFoodItems;
-    private TextView tvTotalPrice;
-    private Button btnTrack;
-    private View layoutEmpty;
-    private View cardOrder;
+    private RecyclerView rvOrders;
+    private LinearLayout layoutEmpty;
+    private ProgressBar progressBar;
+    private OrderAdapter adapter;
+    private List<Order> orderList;
+    private FirebaseRepository repository;
+    private String userId = "user123";
+    private boolean isLoading = false;
 
-    // ============ ADAPTER & DATA ============
-    private SuggestRestaurantAdapter suggestAdapter;
-    private List<Restaurant> suggestionList;
-
-    // ============ FIREBASE ============
-    private FirebaseFirestore firestore;
-
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_delivering, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_order_list, container, false);
+        rvOrders = view.findViewById(R.id.rvOrders);
+        layoutEmpty = view.findViewById(R.id.layoutEmpty);
+        progressBar = view.findViewById(R.id.progressBar);
 
-        // Khởi tạo Firebase
-        firestore = FirebaseFirestore.getInstance();
-        suggestionList = new ArrayList<>();
+        repository = FirebaseRepository.getInstance();
+        orderList = new ArrayList<>();
 
-        initViews(view);
-        setupSuggestions();
-        loadOrderDataFromFirebase();
-        loadSuggestionsFromFirebase();
+        if (getActivity() != null) {
+            userId = getActivity().getSharedPreferences("UserPrefs", 0)
+                    .getString("user_id", "user123");
+        }
 
+        setupRecyclerView();
+        loadOrders();
         return view;
     }
 
-    private void initViews(View view) {
-        rvSuggestions = view.findViewById(R.id.rvSuggestions);
-        layoutEmpty = view.findViewById(R.id.layoutEmpty);
-        cardOrder = view.findViewById(R.id.cardOrder);
-        tvOrderId = view.findViewById(R.id.tvOrderId);
-        tvRestaurantName = view.findViewById(R.id.tvRestaurantName);
-        tvFoodItems = view.findViewById(R.id.tvFoodItems);
-        tvTotalPrice = view.findViewById(R.id.tvTotalPrice);
-        btnTrack = view.findViewById(R.id.btnTrack);
+    private void setupRecyclerView() {
+        adapter = new OrderAdapter(orderList,
+                order -> {
+                    Toast.makeText(getContext(), "Đơn: " + order.getOrderCode(), Toast.LENGTH_SHORT).show();
+                },
+                (order, position) -> {
+                    showCancelConfirmDialog(order, position);
+                }
+        );
+        rvOrders.setLayoutManager(new LinearLayoutManager(getContext()));
+        rvOrders.setAdapter(adapter);
     }
 
-    private void setupSuggestions() {
-        rvSuggestions.setLayoutManager(new LinearLayoutManager(getContext()));
-        suggestAdapter = new SuggestRestaurantAdapter(suggestionList);
-        rvSuggestions.setAdapter(suggestAdapter);
+    private void showCancelConfirmDialog(Order order, int position) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Hủy đơn hàng")
+                .setMessage("Hủy đơn hàng " + order.getOrderCode() + "?")
+                .setPositiveButton("Hủy đơn", (dialog, which) -> {
+                    cancelOrder(order, position);
+                })
+                .setNegativeButton("Quay lại", null)
+                .show();
+    }
 
-        // Xử lý click vào nhà hàng gợi ý
-        suggestAdapter.setOnItemClickListener(restaurant -> {
-            Toast.makeText(getContext(), "Đã chọn: " + restaurant.getName(), Toast.LENGTH_SHORT).show();
-            // TODO: Mở chi tiết nhà hàng
+    private void cancelOrder(Order order, int position) {
+        progressBar.setVisibility(View.VISIBLE);
+        repository.cancelOrder(order.getId(), new FirebaseRepository.OnDataLoaded<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                orderList.remove(position);
+                adapter.updateList(orderList);
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(getContext(), "Đã hủy đơn " + order.getOrderCode(), Toast.LENGTH_SHORT).show();
+
+                if (orderList.isEmpty()) {
+                    rvOrders.setVisibility(View.GONE);
+                    layoutEmpty.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
-    private void loadOrderDataFromFirebase() {
-        // TODO: Load đơn hàng đang giao của user hiện tại từ Firebase
-        // Hiện tại tạm thời hiển thị trạng thái không có đơn hàng
-        boolean hasOrder = false;  // Sẽ thay bằng kiểm tra từ Firebase
+    private void loadOrders() {
+        if (isLoading) return;
+        isLoading = true;
+        progressBar.setVisibility(View.VISIBLE);
 
-        if (hasOrder) {
-            cardOrder.setVisibility(View.VISIBLE);
-            layoutEmpty.setVisibility(View.GONE);
-            // Gán dữ liệu từ Firebase
-            btnTrack.setOnClickListener(v -> {
-                Toast.makeText(getContext(), "Đang theo dõi đơn hàng...", Toast.LENGTH_SHORT).show();
-            });
-        } else {
-            cardOrder.setVisibility(View.GONE);
-            layoutEmpty.setVisibility(View.VISIBLE);
-        }
+        List<String> statusList = Arrays.asList("pending", "preparing", "shipping");
+        repository.getUserOrders(userId, new FirebaseRepository.OnDataLoaded<List<Order>>() {
+            @Override
+            public void onSuccess(List<Order> data) {
+                orderList.clear();
+                for (Order order : data) {
+                    if (statusList.contains(order.getStatus())) {
+                        orderList.add(order);
+                    }
+                }
+
+                if (orderList.isEmpty()) {
+                    rvOrders.setVisibility(View.GONE);
+                    layoutEmpty.setVisibility(View.VISIBLE);
+                } else {
+                    rvOrders.setVisibility(View.VISIBLE);
+                    layoutEmpty.setVisibility(View.GONE);
+                    adapter.updateList(orderList);
+                }
+                progressBar.setVisibility(View.GONE);
+                isLoading = false;
+            }
+
+            @Override
+            public void onError(String error) {
+                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+                progressBar.setVisibility(View.GONE);
+                isLoading = false;
+            }
+        });
     }
 
-    private void loadSuggestionsFromFirebase() {
-        // Load danh sách nhà hàng gợi ý từ Firestore
-        firestore.collection("restaurants")
-                .limit(10)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    suggestionList.clear();
-                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        String id = doc.getId();
-                        String name = doc.getString("name");
-                        String address = doc.getString("address");
-                        Double rating = doc.getDouble("rating");
-                        Double distance = doc.getDouble("distance");
-                        String deliveryTime = doc.getString("deliveryTime");
-                        String discount = doc.getString("discount");
-                        String imageUrl = doc.getString("imageUrl");
+    public void refreshData() {
+        loadOrders();
+    }
 
-                        if (name == null) name = "Nhà hàng";
-                        if (address == null) address = "Đang cập nhật";
-                        if (rating == null) rating = 4.0;
-                        if (distance == null) distance = 1.0;
-                        if (deliveryTime == null) deliveryTime = "30phút";
-                        if (discount == null) discount = "Giảm 10%";
-                        if (imageUrl == null) imageUrl = "";
-
-                        Restaurant restaurant = new Restaurant(id, name, address, rating,
-                                distance, deliveryTime, discount, imageUrl);
-                        suggestionList.add(restaurant);
-                    }
-                    suggestAdapter.updateList(suggestionList);
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Lỗi tải gợi ý: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadOrders();
     }
 }

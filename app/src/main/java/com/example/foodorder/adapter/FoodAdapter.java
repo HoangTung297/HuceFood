@@ -1,7 +1,6 @@
 package com.example.foodorder.adapter;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,26 +49,38 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Food food = foodList.get(position);
+        if (food == null) return;
 
-        // Hiển thị tên món ăn
+        // Tên món
         holder.tvName.setText(food.getName());
 
-        // Hiển thị mô tả (nếu có)
-        if (food.getDescription() != null && !food.getDescription().isEmpty()) {
-            holder.tvDesc.setText(food.getDescription());
+        // Mô tả - HIỂN THỊ BÌNH THƯỜNG
+        String description = food.getDescription();
+        if (description != null && !description.isEmpty()) {
+            holder.tvDesc.setText(description);
             holder.tvDesc.setVisibility(View.VISIBLE);
         } else {
             holder.tvDesc.setVisibility(View.GONE);
         }
 
-        // Hiển thị giá
+        // Giá
         NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
         holder.tvPrice.setText(formatter.format(food.getPrice()) + "đ");
 
-        // Hiển thị ảnh
-        if (food.getImageUrl() != null && !food.getImageUrl().isEmpty()) {
+        // Rating
+        double rating = food.getRating();
+        if (rating > 0) {
+            holder.tvRating.setText(String.format("%.1f", rating));
+            holder.tvRating.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvRating.setVisibility(View.GONE);
+        }
+
+        // Ảnh
+        String imageUrl = food.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
             Glide.with(context)
-                    .load(food.getImageUrl())
+                    .load(imageUrl)
                     .placeholder(R.drawable.ic_food_default)
                     .error(R.drawable.ic_food_default)
                     .into(holder.ivImage);
@@ -77,19 +88,17 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
             holder.ivImage.setImageResource(R.drawable.ic_food_default);
         }
 
-        // Nút thêm vào giỏ
+        // Nút thêm
         holder.btnAdd.setOnClickListener(v -> {
             if (onAddToCart != null) {
                 onAddToCart.onAddToCartClick(food);
-                Log.d("FoodAdapter", "Added to cart: " + food.getName());
             }
         });
 
-        // Click vào item
+        // Click item
         holder.itemView.setOnClickListener(v -> {
             if (onItemClick != null) {
                 onItemClick.onItemClick(food);
-                Log.d("FoodAdapter", "Clicked: " + food.getName());
             }
         });
     }
@@ -102,11 +111,10 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
     public void updateList(List<Food> newList) {
         this.foodList = newList != null ? newList : new ArrayList<>();
         notifyDataSetChanged();
-        Log.d("FoodAdapter", "Updated list with " + this.foodList.size() + " items");
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvDesc, tvPrice;
+        TextView tvName, tvDesc, tvPrice, tvRating;
         Button btnAdd;
         ImageView ivImage;
 
@@ -115,6 +123,7 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
             tvName = itemView.findViewById(R.id.tvFoodName);
             tvDesc = itemView.findViewById(R.id.tvFoodDescription);
             tvPrice = itemView.findViewById(R.id.tvFoodPrice);
+            tvRating = itemView.findViewById(R.id.tvRating);
             btnAdd = itemView.findViewById(R.id.btnAddToCart);
             ivImage = itemView.findViewById(R.id.ivFoodImage);
         }

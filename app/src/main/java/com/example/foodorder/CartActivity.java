@@ -1,50 +1,51 @@
 package com.example.foodorder;
 
-import android.app.AlertDialog;
-import android.content.Intent;
 import android.os.Bundle;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.example.foodorder.adapter.CartGroupAdapter;
+import com.example.foodorder.adapter.ProductItemAdapter;
 import com.example.foodorder.model.CartItem;
+import com.example.foodorder.repository.FirebaseRepository;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class CartActivity extends AppCompatActivity {
 
     private RecyclerView rvCart;
-    private CartGroupAdapter cartAdapter;
-    private List<CartItem> cartItems;
     private TextView tvTotalPrice, tvDeliveryFee, tvVoucherDiscount, tvFinalTotal, tvEmptyCart;
-    private Button btnCheckout, btnContinue, btnSelectVoucher;
+    private Button btnCheckout;
+    private ProductItemAdapter adapter;
+    private List<CartItem> cartItems;
     private Toolbar toolbar;
-
+    private FirebaseRepository repository;
+    private String userId = "user123";
     private double deliveryFee = 15000;
-    private double voucherDiscount = 0;
-    private String selectedVoucher = "";
+    private double discount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cart);
 
-        cartItems = (List<CartItem>) getIntent().getSerializableExtra("cart_items");
-        if (cartItems == null) {
-            cartItems = new ArrayList<>();
-        }
+        repository = FirebaseRepository.getInstance();
+
+        // Lấy userId từ SharedPreferences
+        userId = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                .getString("user_id", "user123");
 
         initViews();
         setupToolbar();
         setupRecyclerView();
-        updateTotalPrice();
+        loadCartItems();
+        calculateTotals();
     }
 
     private void initViews() {
@@ -56,167 +57,126 @@ public class CartActivity extends AppCompatActivity {
         tvFinalTotal = findViewById(R.id.tvFinalTotal);
         tvEmptyCart = findViewById(R.id.tvEmptyCart);
         btnCheckout = findViewById(R.id.btnCheckout);
-        btnContinue = findViewById(R.id.btnContinue);
-        btnSelectVoucher = findViewById(R.id.btnSelectVoucher);
 
-        if (tvDeliveryFee != null) {
-            tvDeliveryFee.setText(String.format("%,.0fđ", deliveryFee));
-        }
-
-        if (btnSelectVoucher != null) {
-            btnSelectVoucher.setOnClickListener(v -> showVoucherDialog());
-        }
-
-        if (btnCheckout != null) {
-            btnCheckout.setOnClickListener(v -> checkout());
-        }
-
-        if (btnContinue != null) {
-            btnContinue.setOnClickListener(v -> finish());
-        }
+        btnCheckout.setOnClickListener(v -> checkout());
     }
 
     private void setupToolbar() {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setDisplayShowHomeEnabled(true);
             getSupportActionBar().setTitle("Giỏ hàng");
         }
+        toolbar.setNavigationOnClickListener(v -> finish());
     }
 
     private void setupRecyclerView() {
-        cartAdapter = new CartGroupAdapter(cartItems, new CartGroupAdapter.OnCartChangeListener() {
-            @Override
-            public void onQuantityChanged(CartItem item, int newQuantity) {
-                if (newQuantity <= 0) {
-                    cartItems.remove(item);
-                } else {
-                    item.setQuantity(newQuantity);
+        cartItems = new ArrayList<>();
+        adapter = new ProductItemAdapter(cartItems,
+                item -> {},
+                (item, newQuantity) -> {
+                    updateCartItem(item);
+                    calculateTotals();
+                },
+                (item, position) -> {
+                    removeFromCart(item.getFoodId(), position);
                 }
-                cartAdapter.updateData(cartItems);
-                updateTotalPrice();
+        );
+        rvCart.setLayoutManager(new LinearLayoutManager(this));
+        rvCart.setAdapter(adapter);
+    }
 
-                if (cartItems.isEmpty() && tvEmptyCart != null) {
-                    tvEmptyCart.setVisibility(View.VISIBLE);
-                }
+    private void loadCartItems() {
+        // Nhận danh sách giỏ hàng từ Intent nếu có
+        if (getIntent().hasExtra("cart_list")) {
+            ArrayList<CartItem> receivedList = (ArrayList<CartItem>) getIntent().getSerializableExtra("cart_list");
+            if (receivedList != null) {
+                cartItems.clear();
+                cartItems.addAll(receivedList);
+                adapter.updateList(cartItems);
             }
+        } else {
+            // Nếu không có thì load từ Firebase
+            repository.getCart(userId, new FirebaseRepository.OnDataLoaded<List<CartItem>>() {
+                @Override
+                public void onSuccess(List<CartItem> data) {
+                    cartItems.clear();
+                    cartItems.addAll(data);
+                    adapter.updateList(cartItems);
+                    calculateTotals();
 
-            @Override
-            public void onItemDeleted(CartItem item) {
-                cartItems.remove(item);
-                cartAdapter.updateData(cartItems);
-                updateTotalPrice();
-
-                if (cartItems.isEmpty() && tvEmptyCart != null) {
-                    tvEmptyCart.setVisibility(View.VISIBLE);
+                    if (cartItems.isEmpty()) {
+                        tvEmptyCart.setVisibility(View.VISIBLE);
+                        rvCart.setVisibility(View.GONE);
+                    } else {
+                        tvEmptyCart.setVisibility(View.GONE);
+                        rvCart.setVisibility(View.VISIBLE);
+                    }
                 }
-            }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(CartActivity.this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (cartItems.isEmpty()) {
+            tvEmptyCart.setVisibility(View.VISIBLE);
+            rvCart.setVisibility(View.GONE);
+        } else {
+            tvEmptyCart.setVisibility(View.GONE);
+            rvCart.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void updateCartItem(CartItem item) {
+        repository.updateCartItem(userId, item, new FirebaseRepository.OnDataLoaded<Void>() {
+            @Override
+            public void onSuccess(Void data) {}
 
             @Override
-            public void onNoteChanged(CartItem item, String note) {
-                item.setNote(note);
-                cartAdapter.updateData(cartItems);
+            public void onError(String error) {
+                Toast.makeText(CartActivity.this, "Lỗi cập nhật: " + error, Toast.LENGTH_SHORT).show();
             }
         });
-
-        rvCart.setLayoutManager(new LinearLayoutManager(this));
-        rvCart.setAdapter(cartAdapter);
-
-        if (cartItems.isEmpty() && tvEmptyCart != null) {
-            tvEmptyCart.setVisibility(View.VISIBLE);
-        } else if (tvEmptyCart != null) {
-            tvEmptyCart.setVisibility(View.GONE);
-        }
     }
 
-    private double getSubTotal() {
-        double total = 0;
-        for (CartItem item : cartItems) {
-            total += item.getTotalPrice();
-        }
-        return total;
-    }
+    private void removeFromCart(String foodId, int position) {
+        repository.removeFromCart(userId, foodId, new FirebaseRepository.OnDataLoaded<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                cartItems.remove(position);
+                adapter.updateList(cartItems);
+                calculateTotals();
 
-    private void updateTotalPrice() {
-        double subTotal = getSubTotal();
-        double finalTotal = subTotal + deliveryFee - voucherDiscount;
-
-        if (tvTotalPrice != null) {
-            tvTotalPrice.setText(String.format("%,.0fđ", subTotal));
-        }
-        if (tvFinalTotal != null) {
-            tvFinalTotal.setText(String.format("%,.0fđ", finalTotal));
-        }
-
-        if (tvVoucherDiscount != null) {
-            if (voucherDiscount > 0) {
-                tvVoucherDiscount.setText(String.format("- %,.0fđ", voucherDiscount));
-            } else {
-                tvVoucherDiscount.setText("0đ");
+                if (cartItems.isEmpty()) {
+                    tvEmptyCart.setVisibility(View.VISIBLE);
+                    rvCart.setVisibility(View.GONE);
+                }
+                Toast.makeText(CartActivity.this, "Đã xóa khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
             }
-        }
+
+            @Override
+            public void onError(String error) {
+                Toast.makeText(CartActivity.this, "Lỗi xóa: " + error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    private void showVoucherDialog() {
-        String[] vouchers = {
-                "Giảm 20.000đ cho đơn từ 100.000đ",
-                "Giảm 50.000đ cho đơn từ 200.000đ",
-                "Miễn phí vận chuyển",
-                "Không dùng voucher"
-        };
+    private void calculateTotals() {
+        double subtotal = 0;
+        for (CartItem item : cartItems) {
+            subtotal += item.getTotalPrice();
+        }
 
-        new AlertDialog.Builder(this)
-                .setTitle("Chọn voucher")
-                .setItems(vouchers, (dialog, which) -> {
-                    switch (which) {
-                        case 0:
-                            if (getSubTotal() >= 100000) {
-                                voucherDiscount = 20000;
-                                selectedVoucher = "Giảm 20.000đ";
-                                deliveryFee = 15000;
-                                if (tvDeliveryFee != null) {
-                                    tvDeliveryFee.setText(String.format("%,.0fđ", deliveryFee));
-                                }
-                            } else {
-                                Toast.makeText(this, "Đơn hàng tối thiểu 100.000đ", Toast.LENGTH_SHORT).show();
-                                voucherDiscount = 0;
-                            }
-                            break;
-                        case 1:
-                            if (getSubTotal() >= 200000) {
-                                voucherDiscount = 50000;
-                                selectedVoucher = "Giảm 50.000đ";
-                                deliveryFee = 15000;
-                                if (tvDeliveryFee != null) {
-                                    tvDeliveryFee.setText(String.format("%,.0fđ", deliveryFee));
-                                }
-                            } else {
-                                Toast.makeText(this, "Đơn hàng tối thiểu 200.000đ", Toast.LENGTH_SHORT).show();
-                                voucherDiscount = 0;
-                            }
-                            break;
-                        case 2:
-                            deliveryFee = 0;
-                            voucherDiscount = 0;
-                            selectedVoucher = "Miễn phí vận chuyển";
-                            if (tvDeliveryFee != null) {
-                                tvDeliveryFee.setText("0đ");
-                            }
-                            break;
-                        case 3:
-                            voucherDiscount = 0;
-                            deliveryFee = 15000;
-                            selectedVoucher = "";
-                            if (tvDeliveryFee != null) {
-                                tvDeliveryFee.setText("15.000đ");
-                            }
-                            break;
-                    }
-                    updateTotalPrice();
-                    Toast.makeText(this, "Đã áp dụng: " + selectedVoucher, Toast.LENGTH_SHORT).show();
-                })
-                .show();
+        double finalTotal = subtotal + deliveryFee - discount;
+        NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+
+        tvTotalPrice.setText(formatter.format(subtotal) + "đ");
+        tvDeliveryFee.setText(formatter.format(deliveryFee) + "đ");
+        tvVoucherDiscount.setText(formatter.format(discount) + "đ");
+        tvFinalTotal.setText(formatter.format(finalTotal) + "đ");
     }
 
     private void checkout() {
@@ -225,56 +185,13 @@ public class CartActivity extends AppCompatActivity {
             return;
         }
 
-        double finalTotal = getSubTotal() + deliveryFee - voucherDiscount;
-
-        StringBuilder orderDetail = new StringBuilder();
-        orderDetail.append("🛒 ĐƠN HÀNG CỦA BẠN\n\n");
-
-        List<CartGroupAdapter.CartGroup> groupList = cartAdapter.getGroupList();
-        if (groupList != null) {
-            for (CartGroupAdapter.CartGroup group : groupList) {
-                orderDetail.append("📌 ").append(group.restaurantName).append(":\n");
-                for (CartItem item : group.items) {
-                    orderDetail.append("   • ").append(item.getFood().getName())
-                            .append(" x").append(item.getQuantity())
-                            .append(" - ").append(String.format("%,.0fđ", item.getTotalPrice()))
-                            .append("\n");
-                    if (!item.getNote().isEmpty()) {
-                        orderDetail.append("     📝 ").append(item.getNote()).append("\n");
-                    }
-                }
-                orderDetail.append("\n");
-            }
-        }
-
-        orderDetail.append("\n💰 Tạm tính: ").append(String.format("%,.0fđ", getSubTotal()))
-                .append("\n🚚 Phí ship: ").append(String.format("%,.0fđ", deliveryFee))
-                .append("\n🎁 Giảm giá: ").append(String.format("%,.0fđ", voucherDiscount))
-                .append("\n────────────────")
-                .append("\n💵 Tổng cộng: ").append(String.format("%,.0fđ", finalTotal));
-
-        new AlertDialog.Builder(this)
-                .setTitle("Xác nhận đặt hàng")
-                .setMessage(orderDetail.toString())
-                .setPositiveButton("ĐẶT HÀNG", (dialog, which) -> {
-                    Toast.makeText(this, "Đặt hàng thành công!\n" +
-                            String.format("Tổng tiền: %,.0fđ", finalTotal), Toast.LENGTH_LONG).show();
-
-                    Intent resultIntent = new Intent();
-                    resultIntent.putExtra("cart_cleared", true);
-                    setResult(RESULT_OK, resultIntent);
-                    finish();
-                })
-                .setNegativeButton("Hủy", null)
-                .show();
+        // TODO: Xử lý thanh toán, tạo đơn hàng
+        Toast.makeText(this, "Chức năng thanh toán đang phát triển", Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            onBackPressed();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 }

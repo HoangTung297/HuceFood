@@ -7,15 +7,13 @@ public class Restaurant implements Serializable {
     private String name;
     private String address;
     private double rating;
-    private double distance;        // THÊM
-    private String deliveryTime;    // THÊM
-    private String discount;        // THÊM
+    private double distance;
+    private String deliveryTime;
+    private String discount;
     private String imageUrl;
 
-    // Constructor mặc định
     public Restaurant() {}
 
-    // Constructor đầy đủ
     public Restaurant(String id, String name, String address, double rating,
                       double distance, String deliveryTime, String discount, String imageUrl) {
         this.id = id;
@@ -26,18 +24,6 @@ public class Restaurant implements Serializable {
         this.deliveryTime = deliveryTime;
         this.discount = discount;
         this.imageUrl = imageUrl;
-    }
-
-    // Constructor rút gọn
-    public Restaurant(String id, String name, String address, double rating, String imageUrl) {
-        this.id = id;
-        this.name = name;
-        this.address = address;
-        this.rating = rating;
-        this.imageUrl = imageUrl;
-        this.distance = 1.0;
-        this.deliveryTime = "30phút";
-        this.discount = "Giảm 10%";
     }
 
     // Getters

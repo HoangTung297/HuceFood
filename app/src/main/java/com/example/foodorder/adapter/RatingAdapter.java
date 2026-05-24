@@ -10,29 +10,21 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
-import com.example.foodorder.model.RatingItem;
+import com.example.foodorder.model.Rating;
 import java.util.List;
 
 public class RatingAdapter extends RecyclerView.Adapter<RatingAdapter.ViewHolder> {
 
-    private List<RatingItem> items;
+    private List<Rating> items;
     private OnRatingSubmitListener listener;
 
     public interface OnRatingSubmitListener {
-        void onRatingSubmit(RatingItem item, float rating);
+        void onRatingSubmit(Rating item, float rating);
     }
 
-    public RatingAdapter(List<RatingItem> items) {
+    public RatingAdapter(List<Rating> items, OnRatingSubmitListener listener) {
         this.items = items;
-    }
-
-    public void setOnRatingSubmitListener(OnRatingSubmitListener listener) {
         this.listener = listener;
-    }
-
-    public void updateList(List<RatingItem> newList) {
-        this.items = newList;
-        notifyDataSetChanged();
     }
 
     @NonNull
@@ -45,13 +37,18 @@ public class RatingAdapter extends RecyclerView.Adapter<RatingAdapter.ViewHolder
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        RatingItem item = items.get(position);
+        Rating item = items.get(position);
         holder.bind(item, listener);
     }
 
     @Override
     public int getItemCount() {
         return items.size();
+    }
+
+    public void updateList(List<Rating> newList) {
+        this.items = newList;
+        notifyDataSetChanged();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
@@ -67,20 +64,19 @@ public class RatingAdapter extends RecyclerView.Adapter<RatingAdapter.ViewHolder
             btnSubmit = itemView.findViewById(R.id.btnSubmit);
         }
 
-        void bind(RatingItem item, OnRatingSubmitListener listener) {
-            tvFoodName.setText(item.getFoodName());
-            tvOrderInfo.setText(item.getOrderInfo());
-            ratingBar.setRating(0);
+        void bind(Rating item, OnRatingSubmitListener listener) {
+            // Rating model không có getFoodName(), hiển thị restaurantId hoặc orderId
+            tvFoodName.setText("Nhà hàng: " + (item.getRestaurantId() != null ? item.getRestaurantId() : "Unknown"));
+            tvOrderInfo.setText("Đơn hàng: #" + item.getOrderId());
 
             btnSubmit.setOnClickListener(v -> {
                 float rating = ratingBar.getRating();
-                if (rating > 0) {
-                    if (listener != null) {
-                        listener.onRatingSubmit(item, rating);
-                    }
-                    Toast.makeText(v.getContext(), "Đã đánh giá " + rating + " sao", Toast.LENGTH_SHORT).show();
-                } else {
+                if (rating == 0) {
                     Toast.makeText(v.getContext(), "Vui lòng chọn số sao", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (listener != null) {
+                    listener.onRatingSubmit(item, rating);
                 }
             });
         }

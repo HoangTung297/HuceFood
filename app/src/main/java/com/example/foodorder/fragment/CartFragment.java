@@ -19,10 +19,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.adapter.CartAdapter;
+import com.example.foodorder.adapter.VoucherAdapter;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
+import com.example.foodorder.model.Voucher;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,13 +42,19 @@ public class CartFragment extends Fragment {
     private LinearLayout layoutCartContent, layoutEmpty, layoutVoucher;
     private CartAdapter adapter;
     private List<CartItem> cartItems;
+    private List<Voucher> voucherList;
+    private VoucherAdapter voucherAdapter;
     private FirebaseRepository repository;
     private FirebaseFirestore db;
     private String userId = "user123";
+    private String userName = "";
+    private String userPhone = "";
+    private String userAddress = "";
+    private Voucher selectedVoucher;
+    private String selectedVoucherCode;
     private double discount = 0;
     private double deliveryFee = 15000;
-    private String selectedVoucherCode = null;
-    private boolean isCreatingOrder = false;
+    private boolean isApplyingVoucher = false;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -53,6 +62,7 @@ public class CartFragment extends Fragment {
         initViews(view);
         setupRecyclerView();
         loadCart();
+        loadUserInfo();
         return view;
     }
 
@@ -74,6 +84,7 @@ public class CartFragment extends Fragment {
         repository = FirebaseRepository.getInstance();
         db = FirebaseFirestore.getInstance();
         cartItems = new ArrayList<>();
+        voucherList = new ArrayList<>();
 
         if (getActivity() != null) {
             userId = getActivity().getSharedPreferences("UserPrefs", 0)
@@ -91,32 +102,47 @@ public class CartFragment extends Fragment {
         });
     }
 
+    private void loadUserInfo() {
+        if (getActivity() != null) {
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+            userName = prefs.getString("user_name", "");
+            userPhone = prefs.getString("user_phone", "");
+            userAddress = prefs.getString("user_address", "");
+        }
+
+        if (userName.isEmpty() || userPhone.isEmpty()) {
+            db.collection("users").document(userId).get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            userName = doc.getString("name") != null ? doc.getString("name") : "";
+                            userPhone = doc.getString("phone") != null ? doc.getString("phone") : "";
+                            userAddress = doc.getString("address") != null ? doc.getString("address") : "";
+
+                            if (getActivity() != null) {
+                                SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+                                prefs.edit().putString("user_name", userName).apply();
+                                prefs.edit().putString("user_phone", userPhone).apply();
+                                prefs.edit().putString("user_address", userAddress).apply();
+                            }
+                        }
+                    });
+        }
+    }
+
     private void setupRecyclerView() {
         adapter = new CartAdapter(cartItems, new CartAdapter.OnCartItemChangeListener() {
             @Override
             public void onQuantityChanged(CartItem item, int newQuantity) {
                 updateCartItem(item);
                 calculateTotals();
+                clearSelectedVoucher();
             }
 
             @Override
             public void onItemRemoved(CartItem item, int position) {
-                // Xóa trực tiếp khỏi danh sách trước khi gọi API
-                cartItems.remove(position);
-                adapter.updateList(cartItems);
+                removeFromCart(item.getFoodId(), position);
                 calculateTotals();
-
-                // Sau đó mới gọi API xóa trên server
-                removeFromCart(item.getFoodId());
-
-                if (cartItems.isEmpty()) {
-                    layoutCartContent.setVisibility(View.GONE);
-                    layoutEmpty.setVisibility(View.VISIBLE);
-                    discount = 0;
-                    selectedVoucherCode = null;
-                    tvVoucherApplied.setVisibility(View.GONE);
-                }
-                Toast.makeText(getContext(), "Đã xóa", Toast.LENGTH_SHORT).show();
+                clearSelectedVoucher();
             }
 
             @Override
@@ -143,6 +169,7 @@ public class CartFragment extends Fragment {
                 } else {
                     layoutCartContent.setVisibility(View.VISIBLE);
                     layoutEmpty.setVisibility(View.GONE);
+                    loadAvailableVouchers();
                 }
             }
 
@@ -153,37 +180,186 @@ public class CartFragment extends Fragment {
         });
     }
 
+    private void loadAvailableVouchers() {
+        if (isApplyingVoucher) return;
+        isApplyingVoucher = true;
+        voucherList.clear();
+
+        double subtotal = 0;
+        for (CartItem item : cartItems) {
+            subtotal += item.getTotalPrice();
+        }
+        final double finalSubtotal = subtotal;
+
+        db.collection("vouchers")
+                .whereEqualTo("isActive", true)
+                .get()
+                .addOnSuccessListener(query -> {
+                    for (QueryDocumentSnapshot doc : query) {
+                        String code = doc.getString("code");
+                        String title = doc.getString("title");
+                        String description = doc.getString("description");
+                        String discountType = doc.getString("discountType");
+                        double discountValue = doc.getDouble("discountValue") != null ? doc.getDouble("discountValue") : 0;
+                        double minOrder = doc.getDouble("minOrder") != null ? doc.getDouble("minOrder") : 0;
+                        double minFoodPrice = doc.getDouble("minFoodPrice") != null ? doc.getDouble("minFoodPrice") : 0;
+
+                        boolean valid = true;
+                        for (CartItem item : cartItems) {
+                            if (item.getPrice() < minFoodPrice) {
+                                valid = false;
+                                break;
+                            }
+                        }
+
+                        if (valid && finalSubtotal >= minOrder) {
+                            Voucher v = new Voucher();
+                            v.setCode(code);
+                            v.setTitle(title);
+                            v.setDescription(description);
+                            v.setDiscountType(discountType);
+                            v.setDiscountValue(discountValue);
+                            v.setMinOrder(minOrder);
+                            voucherList.add(v);
+                        }
+                    }
+                    isApplyingVoucher = false;
+                })
+                .addOnFailureListener(e -> {
+                    isApplyingVoucher = false;
+                });
+    }
+
+    private void showVoucherDialog() {
+        if (cartItems.isEmpty()) {
+            Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (voucherList.isEmpty()) {
+            Toast.makeText(getContext(), "Hiện chưa có voucher khả dụng", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_voucher, null);
+
+        RecyclerView rvVouchers = dialogView.findViewById(R.id.rvVouchers);
+        Button btnApplyVoucher = dialogView.findViewById(R.id.btnApplyVoucher);
+        Button btnCancelVoucher = dialogView.findViewById(R.id.btnCancelVoucher);
+
+        // Lưu voucher được chọn tạm thời
+        final Voucher[] tempSelectedVoucher = {null};
+        final int[] tempSelectedPosition = {-1};
+
+        VoucherAdapter dialogAdapter = new VoucherAdapter(voucherList, (voucher, position, isSelected) -> {
+            if (isSelected) {
+                tempSelectedVoucher[0] = voucher;
+                tempSelectedPosition[0] = position;
+                Toast.makeText(getContext(), "Đã chọn: " + voucher.getTitle(), Toast.LENGTH_SHORT).show();
+            } else {
+                tempSelectedVoucher[0] = null;
+                tempSelectedPosition[0] = -1;
+                Toast.makeText(getContext(), "Đã bỏ chọn: " + voucher.getTitle(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        rvVouchers.setLayoutManager(new LinearLayoutManager(getContext()));
+        rvVouchers.setAdapter(dialogAdapter);
+
+        AlertDialog dialog = builder.setView(dialogView).setTitle("Chọn voucher").create();
+        dialog.show();
+
+        btnApplyVoucher.setOnClickListener(v -> {
+            if (tempSelectedVoucher[0] != null) {
+                applyVoucher(tempSelectedVoucher[0]);
+                dialog.dismiss();
+            } else {
+                Toast.makeText(getContext(), "Vui lòng chọn voucher để áp dụng", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        btnCancelVoucher.setOnClickListener(v -> dialog.dismiss());
+    }
+
+    private void applyVoucher(Voucher voucher) {
+        double subtotal = 0;
+        for (CartItem item : cartItems) subtotal += item.getTotalPrice();
+
+        if ("percent".equals(voucher.getDiscountType())) {
+            discount = subtotal * voucher.getDiscountValue() / 100;
+            if (voucher.getDiscountValue() == 50 && discount > 100000) {
+                discount = 100000;
+            }
+        } else if ("freeship".equals(voucher.getDiscountType())) {
+            deliveryFee = 0;
+            discount = 0;
+        } else {
+            discount = voucher.getDiscountValue();
+        }
+
+        if (discount > subtotal) discount = subtotal;
+        if (discount < 0) discount = 0;
+
+        selectedVoucher = voucher;
+        selectedVoucherCode = voucher.getCode();
+        calculateTotals();
+
+        String discountText = "percent".equals(voucher.getDiscountType()) ?
+                (int) voucher.getDiscountValue() + "%" :
+                NumberFormat.getInstance(new Locale("vi", "VN")).format(discount) + "đ";
+
+        Toast.makeText(getContext(), "Áp dụng thành công! Giảm " + discountText, Toast.LENGTH_SHORT).show();
+    }
+
+    private void clearSelectedVoucher() {
+        discount = 0;
+        deliveryFee = 15000;
+        selectedVoucher = null;
+        selectedVoucherCode = null;
+        tvVoucherApplied.setVisibility(View.GONE);
+        calculateTotals();
+        loadAvailableVouchers();
+    }
+
     private void updateCartItem(CartItem item) {
         repository.updateCartItem(userId, item, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override
-            public void onSuccess(Void data) {}
-            @Override
-            public void onError(String error) {
+            @Override public void onSuccess(Void data) {}
+            @Override public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void removeFromCart(String foodId) {
+    private void removeFromCart(String foodId, int position) {
         repository.removeFromCart(userId, foodId, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
-            public void onSuccess(Void data) {}
-            @Override
-            public void onError(String error) {
+            public void onSuccess(Void data) {
+                cartItems.remove(position);
+                adapter.updateList(cartItems);
+                calculateTotals();
+                if (cartItems.isEmpty()) {
+                    layoutCartContent.setVisibility(View.GONE);
+                    layoutEmpty.setVisibility(View.VISIBLE);
+                    discount = 0;
+                    selectedVoucher = null;
+                    tvVoucherApplied.setVisibility(View.GONE);
+                }
+                Toast.makeText(getContext(), "Đã xóa", Toast.LENGTH_SHORT).show();
+            }
+            @Override public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                loadCart(); // Reload nếu lỗi
             }
         });
     }
 
     private void calculateTotals() {
         double subtotal = 0;
-        for (CartItem item : cartItems) {
-            subtotal += item.getTotalPrice();
-        }
+        for (CartItem item : cartItems) subtotal += item.getTotalPrice();
         double finalTotal = subtotal + deliveryFee - discount;
-        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+        if (finalTotal < 0) finalTotal = 0;
 
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
         tvTotalPrice.setText(f.format(subtotal) + "đ");
         tvDeliveryFee.setText(f.format(deliveryFee) + "đ");
         tvDiscount.setText("-" + f.format(discount) + "đ");
@@ -199,75 +375,12 @@ public class CartFragment extends Fragment {
         }
     }
 
-    private void showVoucherDialog() {
-        if (cartItems.isEmpty()) {
-            Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_voucher, null);
-        EditText etVoucherCode = dialogView.findViewById(R.id.etVoucherCode);
-        Button btnApply = dialogView.findViewById(R.id.btnApplyVoucher);
-        Button btnCancel = dialogView.findViewById(R.id.btnCancelVoucher);
-
-        AlertDialog dialog = builder.setView(dialogView).setTitle("Nhập mã voucher").create();
-        dialog.show();
-
-        btnApply.setOnClickListener(v -> {
-            String code = etVoucherCode.getText().toString().trim().toUpperCase();
-            if (!code.isEmpty()) {
-                checkAndApplyVoucher(code);
-                dialog.dismiss();
-            } else {
-                Toast.makeText(getContext(), "Nhập mã voucher", Toast.LENGTH_SHORT).show();
-            }
-        });
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-    }
-
-    private void checkAndApplyVoucher(String code) {
-        double subtotal = 0;
-        for (CartItem item : cartItems) subtotal += item.getTotalPrice();
-        final double finalSubtotal = subtotal;
-
-        db.collection("vouchers")
-                .whereEqualTo("code", code)
-                .whereEqualTo("isActive", true)
-                .get()
-                .addOnSuccessListener(query -> {
-                    if (!query.isEmpty()) {
-                        Map<String, Object> data = query.getDocuments().get(0).getData();
-                        String discountType = (String) data.get("discountType");
-                        double discountValue = ((Number) data.get("discountValue")).doubleValue();
-                        double minOrder = ((Number) data.get("minOrder")).doubleValue();
-
-                        if (finalSubtotal >= minOrder) {
-                            if ("percent".equals(discountType)) {
-                                discount = finalSubtotal * discountValue / 100;
-                            } else {
-                                discount = discountValue;
-                            }
-                            if (discount > finalSubtotal) discount = finalSubtotal;
-                            selectedVoucherCode = code;
-                            calculateTotals();
-                            Toast.makeText(getContext(), "Áp dụng thành công!", Toast.LENGTH_SHORT).show();
-                        } else {
-                            NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
-                            Toast.makeText(getContext(), "Đơn tối thiểu " + f.format(minOrder) + "đ", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        Toast.makeText(getContext(), "Mã không hợp lệ", Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
     private void showCheckoutDialog() {
         if (cartItems.isEmpty()) {
             Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (isCreatingOrder) return;
+        if (isApplyingVoucher) return;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_checkout, null);
@@ -277,10 +390,17 @@ public class CartFragment extends Fragment {
         TextView tvOrderDelivery = dialogView.findViewById(R.id.tvOrderDelivery);
         TextView tvOrderDiscount = dialogView.findViewById(R.id.tvOrderDiscount);
         TextView tvOrderTotal = dialogView.findViewById(R.id.tvOrderTotal);
-        RadioGroup rgPayment = dialogView.findViewById(R.id.rgPayment);
+        EditText etDeliveryName = dialogView.findViewById(R.id.etDeliveryName);
+        EditText etDeliveryPhone = dialogView.findViewById(R.id.etDeliveryPhone);
+        EditText etDeliveryAddress = dialogView.findViewById(R.id.etDeliveryAddress);
         EditText etOrderNote = dialogView.findViewById(R.id.etOrderNote);
+        RadioGroup rgPayment = dialogView.findViewById(R.id.rgPayment);
         Button btnConfirm = dialogView.findViewById(R.id.btnConfirmOrder);
         Button btnCancel = dialogView.findViewById(R.id.btnCancelOrder);
+
+        etDeliveryName.setText(userName);
+        etDeliveryPhone.setText(userPhone);
+        etDeliveryAddress.setText(userAddress);
 
         NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
         double subtotal = 0;
@@ -300,24 +420,54 @@ public class CartFragment extends Fragment {
         dialog.show();
 
         btnConfirm.setOnClickListener(v -> {
+            String deliveryName = etDeliveryName.getText().toString().trim();
+            String deliveryPhone = etDeliveryPhone.getText().toString().trim();
+            String deliveryAddress = etDeliveryAddress.getText().toString().trim();
+            String orderNote = etOrderNote.getText().toString();
+
+            if (deliveryName.isEmpty()) {
+                Toast.makeText(getContext(), "Vui lòng nhập họ tên", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (deliveryPhone.isEmpty()) {
+                Toast.makeText(getContext(), "Vui lòng nhập số điện thoại", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (deliveryAddress.isEmpty()) {
+                Toast.makeText(getContext(), "Vui lòng nhập địa chỉ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+            prefs.edit().putString("user_name", deliveryName).apply();
+            prefs.edit().putString("user_phone", deliveryPhone).apply();
+            prefs.edit().putString("user_address", deliveryAddress).apply();
+
             int selectedId = rgPayment.getCheckedRadioButtonId();
             String paymentMethod = "COD";
             if (selectedId == R.id.rbCOD) paymentMethod = "COD";
             else if (selectedId == R.id.rbMomo) paymentMethod = "Momo";
-            createOrder(etOrderNote.getText().toString(), paymentMethod);
+
+            createOrder(orderNote, paymentMethod, deliveryName, deliveryPhone, deliveryAddress);
             dialog.dismiss();
         });
+
         btnCancel.setOnClickListener(v -> dialog.dismiss());
     }
 
-    private void createOrder(String orderNote, String paymentMethod) {
-        isCreatingOrder = true;
+    private void createOrder(String orderNote, String paymentMethod, String deliveryName, String deliveryPhone, String deliveryAddress) {
+        if (isApplyingVoucher) return;
+        isApplyingVoucher = true;
         btnCheckout.setEnabled(false);
         btnCheckout.setText("Đang xử lý...");
 
         Order order = new Order();
         order.setUserId(userId);
         order.setOrderCode("ORD" + System.currentTimeMillis());
+        order.setDeliveryName(deliveryName);
+        order.setDeliveryPhone(deliveryPhone);
+        order.setDeliveryAddress(deliveryAddress);
+
         if (!cartItems.isEmpty()) {
             order.setRestaurantId(cartItems.get(0).getRestaurantId());
             order.setRestaurantName(cartItems.get(0).getName());
@@ -355,19 +505,17 @@ public class CartFragment extends Fragment {
                 repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
                     @Override
                     public void onSuccess(Void data) {
-                        discount = 0;
-                        selectedVoucherCode = null;
+                        clearSelectedVoucher();
                         loadCart();
-                        isCreatingOrder = false;
+                        isApplyingVoucher = false;
                         btnCheckout.setEnabled(true);
                         btnCheckout.setText("THANH TOÁN");
                         String paymentText = paymentMethod.equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo";
                         Toast.makeText(getContext(), "Đặt hàng thành công!\nMã: #" + orderId + "\n" + paymentText, Toast.LENGTH_LONG).show();
                     }
-
                     @Override
                     public void onError(String error) {
-                        isCreatingOrder = false;
+                        isApplyingVoucher = false;
                         btnCheckout.setEnabled(true);
                         btnCheckout.setText("THANH TOÁN");
                         Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
@@ -375,10 +523,9 @@ public class CartFragment extends Fragment {
                     }
                 });
             }
-
             @Override
             public void onError(String error) {
-                isCreatingOrder = false;
+                isApplyingVoucher = false;
                 btnCheckout.setEnabled(true);
                 btnCheckout.setText("THANH TOÁN");
                 Toast.makeText(getContext(), "Đặt hàng thất bại: " + error, Toast.LENGTH_SHORT).show();
@@ -389,12 +536,6 @@ public class CartFragment extends Fragment {
     public void refreshData() {
         loadCart();
         calculateTotals();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        loadCart();
-        calculateTotals();
+        loadAvailableVouchers();
     }
 }

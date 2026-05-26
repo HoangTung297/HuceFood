@@ -8,9 +8,14 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;  // THÊM DÒNG NÀY
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -24,7 +29,6 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.foodorder.FoodDetailActivity;
 import com.example.foodorder.HomeActivity;
 import com.example.foodorder.R;
-import com.example.foodorder.SearchActivity;
 import com.example.foodorder.adapter.BannerAdapter;
 import com.example.foodorder.adapter.CategoryAdapter;
 import com.example.foodorder.adapter.FoodAdapter;
@@ -86,7 +90,6 @@ public class HomeFragment extends Fragment {
 
         firestore = FirebaseFirestore.getInstance();
 
-        // Khởi tạo cache
         if (getContext() != null) {
             cacheManager = new CacheManager(getContext());
         }
@@ -126,8 +129,6 @@ public class HomeFragment extends Fragment {
 
         tvAddress.setText(currentAddress);
         tvStatus.setVisibility(View.VISIBLE);
-
-        // Ẩn nút clear search vì không dùng realtime nữa
         ivClearSearch.setVisibility(View.GONE);
     }
 
@@ -211,9 +212,17 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadVouchers() {
-        if (!isNetworkAvailable()) {
-            loadVouchersFromCache();
-            return;
+        if (cacheManager != null) {
+            List<Voucher> cachedVouchers = cacheManager.getCachedVouchers();
+            if (cachedVouchers != null && !cachedVouchers.isEmpty()) {
+                voucherList.clear();
+                voucherList.addAll(cachedVouchers);
+                // SỬA: Thêm null làm tham số thứ hai
+                voucherAdapter = new VoucherAdapter(voucherList, null);
+                rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+                rvVouchers.setAdapter(voucherAdapter);
+                return;
+            }
         }
 
         firestore.collection("vouchers")
@@ -236,57 +245,30 @@ public class HomeFragment extends Fragment {
                         Double minOrder = doc.getDouble("minOrder");
                         voucher.setMinOrder(minOrder != null ? minOrder : 0);
 
-                        voucher.setActive(true);
                         voucherList.add(voucher);
                     }
 
-                    if (cacheManager != null && !voucherList.isEmpty()) {
+                    if (cacheManager != null) {
                         cacheManager.cacheVouchers(voucherList);
                     }
-
-                    updateVoucherUI();
+                    // SỬA: Thêm null làm tham số thứ hai
+                    voucherAdapter = new VoucherAdapter(voucherList, null);
+                    rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+                    rvVouchers.setAdapter(voucherAdapter);
                 })
-                .addOnFailureListener(e -> loadVouchersFromCache());
-    }
-
-    private void loadVouchersFromCache() {
-        if (cacheManager != null) {
-            List<Voucher> cached = cacheManager.getCachedVouchers();
-            if (cached != null && !cached.isEmpty()) {
-                voucherList.clear();
-                voucherList.addAll(cached);
-                updateVoucherUI();
-            }
-        }
-    }
-
-    private void updateVoucherUI() {
-        if (voucherAdapter == null) {
-            voucherAdapter = new VoucherAdapter(voucherList);
-            rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-            rvVouchers.setAdapter(voucherAdapter);
-        } else {
-            voucherAdapter.updateList(voucherList);
-        }
-    }
-
-    private boolean isNetworkAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm != null) {
-            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-            return activeNetwork != null && activeNetwork.isConnected();
-        }
-        return false;
+                .addOnFailureListener(e -> {
+                    Log.e("HomeFragment", "Lỗi tải voucher: " + e.getMessage());
+                });
     }
 
     private void loadFoods() {
         if (isLoading) return;
 
         if (cacheManager != null) {
-            List<Food> cached = cacheManager.getCachedFoods();
-            if (cached != null && !cached.isEmpty()) {
+            List<Food> cachedFoods = cacheManager.getCachedFoods();
+            if (cachedFoods != null && !cachedFoods.isEmpty()) {
                 allFoodsList.clear();
-                allFoodsList.addAll(cached);
+                allFoodsList.addAll(cachedFoods);
                 processAndDisplayData();
                 tvStatus.setVisibility(View.GONE);
                 return;
@@ -340,17 +322,14 @@ public class HomeFragment extends Fragment {
         if (getContext() == null) return;
         if (allFoodsList.isEmpty()) return;
 
-        // Flash Sale: Top 5 bán chạy
         List<Food> flashList = new ArrayList<>(allFoodsList);
         Collections.sort(flashList, (a, b) -> Integer.compare(b.getSoldCount(), a.getSoldCount()));
         flashSaleAdapter.updateList(flashList.size() > 5 ? flashList.subList(0, 5) : flashList);
 
-        // Hot Deal: Top 10 rating cao
         List<Food> hotList = new ArrayList<>(allFoodsList);
         Collections.sort(hotList, (a, b) -> Double.compare(b.getRating(), a.getRating()));
         hotDealAdapter.updateList(hotList.size() > 10 ? hotList.subList(0, 10) : hotList);
 
-        // Tất cả
         allFoodsAdapter.updateList(allFoodsList);
         tvStatus.setVisibility(View.GONE);
     }
@@ -367,21 +346,18 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupSearch() {
-        // Khi click vào thanh tìm kiếm, mở SearchActivity
         etSearch.setOnClickListener(v -> {
-            Intent intent = new Intent(getContext(), SearchActivity.class);
+            Intent intent = new Intent(getContext(), com.example.foodorder.SearchActivity.class);
             startActivity(intent);
         });
 
-        // Khi click vào icon tìm kiếm, mở SearchActivity
         if (ivSearchIcon != null) {
             ivSearchIcon.setOnClickListener(v -> {
-                Intent intent = new Intent(getContext(), SearchActivity.class);
+                Intent intent = new Intent(getContext(), com.example.foodorder.SearchActivity.class);
                 startActivity(intent);
             });
         }
 
-        // Làm cho thanh tìm kiếm không thể nhập (chỉ để click)
         etSearch.setFocusable(false);
         etSearch.setFocusableInTouchMode(false);
         etSearch.setCursorVisible(false);

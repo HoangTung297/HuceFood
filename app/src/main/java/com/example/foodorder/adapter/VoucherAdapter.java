@@ -20,12 +20,7 @@ public class VoucherAdapter extends RecyclerView.Adapter<VoucherAdapter.ViewHold
     private int selectedPosition = -1;
 
     public interface OnVoucherSelectedListener {
-        void onVoucherSelected(Voucher voucher);
-    }
-
-    public VoucherAdapter(List<Voucher> voucherList) {
-        this.voucherList = voucherList;
-        this.listener = null;
+        void onVoucherSelected(Voucher voucher, int position, boolean isSelected);
     }
 
     public VoucherAdapter(List<Voucher> voucherList, OnVoucherSelectedListener listener) {
@@ -44,9 +39,7 @@ public class VoucherAdapter extends RecyclerView.Adapter<VoucherAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Voucher voucher = voucherList.get(position);
-        holder.bind(voucher, listener, position);
-
-        // Hiển thị radio button được chọn
+        holder.bind(voucher, position);
         holder.rbSelect.setChecked(position == selectedPosition);
     }
 
@@ -66,7 +59,12 @@ public class VoucherAdapter extends RecyclerView.Adapter<VoucherAdapter.ViewHold
         notifyDataSetChanged();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder {
+    public int getSelectedPosition() {
+        return selectedPosition;
+    }
+
+    // ==================== VIEW HOLDER ====================
+    class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitle, tvDescription, tvDiscount, tvCode;
         RadioButton rbSelect;
 
@@ -79,49 +77,39 @@ public class VoucherAdapter extends RecyclerView.Adapter<VoucherAdapter.ViewHold
             rbSelect = itemView.findViewById(R.id.rbSelectVoucher);
         }
 
-        void bind(Voucher voucher, OnVoucherSelectedListener listener, int position) {
+        void bind(Voucher voucher, int position) {
             NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
 
-            // Title
-            if (voucher.getTitle() != null) {
-                tvTitle.setText(voucher.getTitle());
-            } else {
-                tvTitle.setText(voucher.getCode());
-            }
+            tvTitle.setText(voucher.getTitle() != null ? voucher.getTitle() : voucher.getCode());
 
-            // Discount
             if ("percent".equals(voucher.getDiscountType())) {
                 tvDiscount.setText("-" + (int) voucher.getDiscountValue() + "%");
             } else if ("freeship".equals(voucher.getDiscountType())) {
-                tvDiscount.setText("FREE");
+                tvDiscount.setText("FREE SHIP");
             } else {
                 tvDiscount.setText("-" + f.format(voucher.getDiscountValue()) + "đ");
             }
 
-            // Description
-            if (voucher.getDescription() != null && !voucher.getDescription().isEmpty()) {
-                tvDescription.setText(voucher.getDescription());
-            } else {
-                if ("percent".equals(voucher.getDiscountType())) {
-                    tvDescription.setText("Giảm " + (int) voucher.getDiscountValue() + "% cho đơn từ " + f.format(voucher.getMinOrder()) + "đ");
-                } else if ("freeship".equals(voucher.getDiscountType())) {
-                    tvDescription.setText("Miễn phí ship cho đơn từ " + f.format(voucher.getMinOrder()) + "đ");
-                } else {
-                    tvDescription.setText("Giảm " + f.format(voucher.getDiscountValue()) + "đ cho đơn từ " + f.format(voucher.getMinOrder()) + "đ");
-                }
-            }
-
-            // Code
+            tvDescription.setText(voucher.getDescription());
             tvCode.setText("Mã: " + voucher.getCode());
 
-            // Radio button click
+            // Xử lý click - có thể truy cập biến selectedPosition của class bên ngoài
             rbSelect.setOnClickListener(v -> {
+                boolean isSelected;
+                if (selectedPosition == position) {
+                    selectedPosition = -1;
+                    isSelected = false;
+                } else {
+                    selectedPosition = position;
+                    isSelected = true;
+                }
+                notifyDataSetChanged();
+
                 if (listener != null) {
-                    listener.onVoucherSelected(voucher);
+                    listener.onVoucherSelected(voucher, position, isSelected);
                 }
             });
 
-            // Item click
             itemView.setOnClickListener(v -> {
                 rbSelect.performClick();
             });

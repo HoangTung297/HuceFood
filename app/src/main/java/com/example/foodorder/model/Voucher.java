@@ -6,33 +6,20 @@ public class Voucher {
     private String title;
     private String name;
     private String description;
-    private String discountType; // "fixed", "percent", "freeship"
+    private String discountType; // fixed, percent, freeship
     private double discountValue;
     private double minOrder;
-    private long expiryDate;
+    private double minFoodPrice; // Giá tối thiểu mỗi món để áp dụng
     private boolean isActive;
+    private boolean isGlobal;
+    private boolean isUsed;
+    private long expiryDate;
+    private long receivedAt;
     private int quantity;
     private int usedCount;
-    private String imageUrl;
+    private String userId;
 
     public Voucher() {}
-
-    // Constructor cũ (giữ lại để tương thích)
-    public Voucher(int id, String title, String discount, String description) {
-        this.id = String.valueOf(id);
-        this.title = title;
-        this.description = description;
-        if (discount != null) {
-            if (discount.contains("%")) {
-                this.discountType = "percent";
-                this.discountValue = Double.parseDouble(discount.replace("%", "").trim());
-            } else {
-                this.discountType = "fixed";
-                this.discountValue = Double.parseDouble(discount.replace("đ", "").trim().replace(".", ""));
-            }
-        }
-        this.isActive = true;
-    }
 
     // Getters
     public String getId() { return id; }
@@ -44,11 +31,15 @@ public class Voucher {
     public double getDiscountValue() { return discountValue; }
     public double getDiscount() { return discountValue; }
     public double getMinOrder() { return minOrder; }
-    public long getExpiryDate() { return expiryDate; }
+    public double getMinFoodPrice() { return minFoodPrice; }
     public boolean isActive() { return isActive; }
+    public boolean isGlobal() { return isGlobal; }
+    public boolean isUsed() { return isUsed; }
+    public long getExpiryDate() { return expiryDate; }
+    public long getReceivedAt() { return receivedAt; }
     public int getQuantity() { return quantity; }
     public int getUsedCount() { return usedCount; }
-    public String getImageUrl() { return imageUrl; }
+    public String getUserId() { return userId; }
 
     // Setters
     public void setId(String id) { this.id = id; }
@@ -59,9 +50,13 @@ public class Voucher {
     public void setDiscountType(String discountType) { this.discountType = discountType; }
     public void setDiscountValue(double discountValue) { this.discountValue = discountValue; }
     public void setMinOrder(double minOrder) { this.minOrder = minOrder; }
-    public void setExpiryDate(long expiryDate) { this.expiryDate = expiryDate; }
+    public void setMinFoodPrice(double minFoodPrice) { this.minFoodPrice = minFoodPrice; }
     public void setActive(boolean active) { isActive = active; }
+    public void setGlobal(boolean global) { isGlobal = global; }
+    public void setUsed(boolean used) { isUsed = used; }
+    public void setExpiryDate(long expiryDate) { this.expiryDate = expiryDate; }
+    public void setReceivedAt(long receivedAt) { this.receivedAt = receivedAt; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public void setUsedCount(int usedCount) { this.usedCount = usedCount; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setUserId(String userId) { this.userId = userId; }
 }

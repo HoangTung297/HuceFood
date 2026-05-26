@@ -1,59 +1,44 @@
 package com.example.foodorder.model;
 
 public class User {
-    private int id;
-    private String username;
+    private String id;
+    private String name;
     private String email;
-    private String password;
     private String phone;
+    private String address;
+    private String avatarUrl;
+    private long createdAt;
+    private String password;
 
-    public User(int id, String username, String email, String password, String phone) {
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public User() {}
+
+    public User(String id, String name, String email, String phone, String address) {
         this.id = id;
-        this.username = username;
+        this.name = name;
         this.email = email;
-        this.password = password;
         this.phone = phone;
+        this.address = address;
+        this.createdAt = System.currentTimeMillis();
     }
 
     // Getters
-    public int getId() {
-        return id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public String getPhone() { return phone; }
+    public String getAddress() { return address; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public long getCreatedAt() { return createdAt; }
 
     // Setters
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
+    public void setId(String id) { this.id = id; }
+    public void setName(String name) { this.name = name; }
+    public void setEmail(String email) { this.email = email; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public void setAddress(String address) { this.address = address; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
 }

@@ -25,11 +25,12 @@
             android:textStyle="bold"
             android:layout_marginBottom="32dp"/>
 
+        <!-- Họ tên (giữ ID etUsername nhưng trong code sẽ dùng etName) -->
         <EditText
-            android:id="@+id/etUsername"
+            android:id="@+id/etName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Tên người dùng"
+            android:hint="Họ và tên"
             android:padding="16dp"
             android:layout_marginBottom="16dp"
             android:background="@drawable/button_background"/>
@@ -55,6 +56,15 @@
             android:background="@drawable/button_background"/>
 
         <EditText
+            android:id="@+id/etAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Địa chỉ"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/button_background"/>
+
+        <EditText
             android:id="@+id/etPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -74,20 +84,30 @@
             android:layout_marginBottom="24dp"
             android:background="@drawable/button_background"/>
 
+        <!-- ProgressBar -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp" />
+
         <Button
             android:id="@+id/btnRegister"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Đăng ký"
             android:padding="16dp"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="#FF5722"
+            android:textColor="@android:color/white" />
 
         <TextView
             android:id="@+id/tvLogin"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Đã có tài khoản? Đăng nhập"
-            android:textColor="@color/primary_color"
+            android:textColor="#FF5722"
             android:textSize="14sp"/>
 
     </LinearLayout>

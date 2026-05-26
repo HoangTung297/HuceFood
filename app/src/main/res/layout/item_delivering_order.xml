@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
     <LinearLayout
@@ -23,7 +23,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Mã đơn: #ORD001"
+                android:text="Mã: #ORD001"
                 android:textSize="12sp"
                 android:textColor="#757575" />
 
@@ -31,12 +31,20 @@
                 android:id="@+id/tvStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Đang giao"
+                android:text="⏳ Đang xử lý"
                 android:textSize="12sp"
-                android:textColor="#FF9800"
                 android:textStyle="bold" />
 
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvOrderDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="15/05/2024 10:30"
+            android:textSize="12sp"
+            android:textColor="#757575"
+            android:layout_marginTop="4dp" />
 
         <TextView
             android:id="@+id/tvRestaurantName"
@@ -45,7 +53,7 @@
             android:text="KFC"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="8dp" />
 
         <TextView
             android:id="@+id/tvFoodItems"
@@ -61,17 +69,36 @@
             android:layout_height="wrap_content"
             android:text="130,000đ"
             android:textSize="16sp"
-            android:textColor="#FF9800"
+            android:textColor="#FF5722"
             android:textStyle="bold"
             android:layout_marginTop="8dp" />
 
-        <Button
-            android:id="@+id/btnTrack"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="12dp"
-            android:text="📍 Theo dõi đơn hàng"
-            android:backgroundTint="#FF9800" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnCancel"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Hủy đơn"
+                android:backgroundTint="#F44336"
+                android:textColor="@android:color/white"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btnReceived"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Đã nhận hàng"
+                android:backgroundTint="#4CAF50"
+                android:textColor="@android:color/white" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

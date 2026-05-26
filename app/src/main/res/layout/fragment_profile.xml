@@ -51,22 +51,23 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Thông tin cá nhân"
+                    android:text="📋 THÔNG TIN CÁ NHÂN"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="#333333"
                     android:layout_marginBottom="12dp" />
 
+                <!-- Họ tên -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
+                    android:layout_marginBottom="12dp">
 
                     <TextView
                         android:layout_width="100dp"
                         android:layout_height="wrap_content"
-                        android:text="Họ tên:"
+                        android:text="👤 Họ tên:"
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
@@ -81,16 +82,17 @@
 
                 </LinearLayout>
 
+                <!-- Email -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
+                    android:layout_marginBottom="12dp">
 
                     <TextView
                         android:layout_width="100dp"
                         android:layout_height="wrap_content"
-                        android:text="Email:"
+                        android:text="📧 Email:"
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
@@ -105,6 +107,32 @@
 
                 </LinearLayout>
 
+                <!-- Số điện thoại -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="100dp"
+                        android:layout_height="wrap_content"
+                        android:text="📞 SĐT:"
+                        android:textSize="14sp"
+                        android:textColor="#757575" />
+
+                    <TextView
+                        android:id="@+id/tvPhone"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Chưa cập nhật"
+                        android:textSize="14sp"
+                        android:textColor="#333333" />
+
+                </LinearLayout>
+
+                <!-- Địa chỉ -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -113,12 +141,12 @@
                     <TextView
                         android:layout_width="100dp"
                         android:layout_height="wrap_content"
-                        android:text="SĐT:"
+                        android:text="📍 Địa chỉ:"
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
                     <TextView
-                        android:id="@+id/tvPhone"
+                        android:id="@+id/tvAddress"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -145,12 +173,13 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <!-- Nút giỏ hàng -->
                 <Button
                     android:id="@+id/btnCart"
                     style="?attr/borderlessButtonStyle"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:text="🛒 Giỏ hàng"
+                    android:text="🛒 Giỏ hàng của tôi"
                     android:textSize="14sp"
                     android:gravity="center_vertical|start"
                     android:paddingStart="16dp"
@@ -161,6 +190,7 @@
                     android:layout_height="1dp"
                     android:background="#E0E0E0" />
 
+                <!-- Nút lịch sử đơn hàng -->
                 <Button
                     android:id="@+id/btnOrderHistory"
                     style="?attr/borderlessButtonStyle"
@@ -177,6 +207,7 @@
                     android:layout_height="1dp"
                     android:background="#E0E0E0" />
 
+                <!-- Nút xóa giỏ hàng -->
                 <Button
                     android:id="@+id/btnClearCart"
                     style="?attr/borderlessButtonStyle"
@@ -197,10 +228,12 @@
             android:id="@+id/btnLogout"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="Đăng xuất"
+            android:text="ĐĂNG XUẤT"
+            android:textSize="14sp"
+            android:textStyle="bold"
             android:backgroundTint="#F44336"
             android:textColor="@android:color/white"
-            android:textSize="14sp" />
+            app:cornerRadius="8dp" />
 
     </LinearLayout>
 

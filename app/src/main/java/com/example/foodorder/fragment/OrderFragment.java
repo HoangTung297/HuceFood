@@ -48,19 +48,42 @@ public class OrderFragment extends Fragment {
         ).attach();
     }
 
+    public void switchToCartTab() {
+        if (viewPager != null) {
+            viewPager.setCurrentItem(0, true);
+        }
+    }
+
+    // THÊM METHOD NÀY
     public void refreshAllTabs() {
-        if (pagerAdapter == null) return;
-        for (int i = 0; i < pagerAdapter.getItemCount(); i++) {
-            Fragment fragment = getChildFragmentManager().findFragmentByTag("f" + i);
-            if (fragment instanceof CartFragment) {
-                ((CartFragment) fragment).refreshData();
-            } else if (fragment instanceof DeliveringFragment) {
-                ((DeliveringFragment) fragment).refreshData();
-            } else if (fragment instanceof OrderReceivedFragment) {
-                ((OrderReceivedFragment) fragment).refreshData();
-            } else if (fragment instanceof OrderHistoryFragment) {
-                ((OrderHistoryFragment) fragment).refreshData();
-            }
+        // Refresh CartFragment
+        Fragment cartFragment = getChildFragmentManager().findFragmentByTag("f0");
+        if (cartFragment instanceof CartFragment) {
+            ((CartFragment) cartFragment).refreshData();
+        }
+
+        // Refresh DeliveringFragment
+        Fragment deliveringFragment = getChildFragmentManager().findFragmentByTag("f1");
+        if (deliveringFragment instanceof DeliveringFragment) {
+            ((DeliveringFragment) deliveringFragment).refreshData();
+        }
+
+        // Refresh OrderReceivedFragment
+        Fragment receivedFragment = getChildFragmentManager().findFragmentByTag("f2");
+        if (receivedFragment instanceof OrderReceivedFragment) {
+            ((OrderReceivedFragment) receivedFragment).refreshData();
+        }
+
+        // Refresh RatingFragment
+        Fragment ratingFragment = getChildFragmentManager().findFragmentByTag("f3");
+        if (ratingFragment instanceof RatingFragment) {
+            ((RatingFragment) ratingFragment).refreshData();
+        }
+
+        // Refresh OrderHistoryFragment
+        Fragment historyFragment = getChildFragmentManager().findFragmentByTag("f4");
+        if (historyFragment instanceof OrderHistoryFragment) {
+            ((OrderHistoryFragment) historyFragment).refreshData();
         }
     }
 }

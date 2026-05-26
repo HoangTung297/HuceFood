@@ -1,124 +1,146 @@
 package com.example.foodorder;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
-import java.util.regex.Pattern;
+import com.example.foodorder.model.User;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText etUsername, etEmail, etPassword, etConfirmPassword, etPhone;
+    private EditText etName, etEmail, etPhone, etAddress, etPassword, etConfirmPassword;
     private Button btnRegister;
-    private FirebaseAuth mAuth;
-
-    private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@(.+)$";
-    private static final String PHONE_PATTERN = "^0[0-9]{9}$";
+    private ProgressBar progressBar;
+    private TextView tvLogin;
+    private FirebaseFirestore db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        mAuth = FirebaseAuth.getInstance();
-
+        db = FirebaseFirestore.getInstance();
         initViews();
-        setupListeners();
+        setupClickListeners();
     }
 
     private void initViews() {
-        etUsername = findViewById(R.id.etUsername);
+        etName = findViewById(R.id.etName);
         etEmail = findViewById(R.id.etEmail);
+        etPhone = findViewById(R.id.etPhone);
+        etAddress = findViewById(R.id.etAddress);
         etPassword = findViewById(R.id.etPassword);
         etConfirmPassword = findViewById(R.id.etConfirmPassword);
-        etPhone = findViewById(R.id.etPhone);
         btnRegister = findViewById(R.id.btnRegister);
+        progressBar = findViewById(R.id.progressBar);
+        tvLogin = findViewById(R.id.tvLogin);
     }
 
-    private void setupListeners() {
-        btnRegister.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                registerUser();
-            }
+    private void setupClickListeners() {
+        btnRegister.setOnClickListener(v -> register());
+        tvLogin.setOnClickListener(v -> {
+            Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+            startActivity(intent);
+            finish();
         });
     }
 
-    private boolean isValidEmail(String email) {
-        return Pattern.matches(EMAIL_PATTERN, email);
-    }
-
-    private boolean isValidPhone(String phone) {
-        return Pattern.matches(PHONE_PATTERN, phone);
-    }
-
-    private void registerUser() {
-        String username = etUsername.getText().toString().trim();
+    private void register() {
+        String name = etName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
+        String phone = etPhone.getText().toString().trim();
+        String address = etAddress.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
         String confirmPassword = etConfirmPassword.getText().toString().trim();
-        String phone = etPhone.getText().toString().trim();
 
-        // Validation
-        if (username.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập tên người dùng", Toast.LENGTH_SHORT).show();
+        if (TextUtils.isEmpty(name)) {
+            etName.setError("Vui lòng nhập họ tên");
             return;
         }
-
-        if (email.isEmpty() || !isValidEmail(email)) {
-            Toast.makeText(this, "Email không hợp lệ!", Toast.LENGTH_SHORT).show();
+        if (TextUtils.isEmpty(email)) {
+            etEmail.setError("Vui lòng nhập email");
             return;
         }
-
-        if (password.isEmpty() || password.length() < 6) {
-            Toast.makeText(this, "Mật khẩu phải có ít nhất 6 ký tự", Toast.LENGTH_SHORT).show();
+        if (TextUtils.isEmpty(phone)) {
+            etPhone.setError("Vui lòng nhập số điện thoại");
             return;
         }
-
+        if (TextUtils.isEmpty(password)) {
+            etPassword.setError("Vui lòng nhập mật khẩu");
+            return;
+        }
+        if (password.length() < 6) {
+            etPassword.setError("Mật khẩu phải có ít nhất 6 ký tự");
+            return;
+        }
         if (!password.equals(confirmPassword)) {
-            Toast.makeText(this, "Mật khẩu không khớp", Toast.LENGTH_SHORT).show();
+            etConfirmPassword.setError("Mật khẩu xác nhận không khớp");
             return;
         }
 
-        if (phone.isEmpty() || !isValidPhone(phone)) {
-            Toast.makeText(this, "Số điện thoại không hợp lệ! (10 số, bắt đầu bằng 0)", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        progressBar.setVisibility(View.VISIBLE);
+        btnRegister.setEnabled(false);
 
-        // Đăng ký với Firebase
-        mAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(RegisterActivity.this, "Đăng ký thành công!", Toast.LENGTH_SHORT).show();
-
-                            // TODO: Lưu thêm thông tin user vào Firestore (username, phone)
-
-                            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                            finish();
-                        } else {
-                            String errorMessage = "Đăng ký thất bại";
-                            if (task.getException() instanceof FirebaseAuthException) {
-                                String errorCode = ((FirebaseAuthException) task.getException()).getErrorCode();
-                                if (errorCode.equals("ERROR_EMAIL_ALREADY_IN_USE")) {
-                                    errorMessage = "Email đã được sử dụng!";
-                                } else {
-                                    errorMessage = task.getException().getMessage();
-                                }
-                            }
-                            Toast.makeText(RegisterActivity.this, errorMessage, Toast.LENGTH_LONG).show();
-                        }
+        // Kiểm tra email đã tồn tại chưa
+        db.collection("users")
+                .whereEqualTo("email", email)
+                .get()
+                .addOnSuccessListener(query -> {
+                    if (!query.isEmpty()) {
+                        progressBar.setVisibility(View.GONE);
+                        btnRegister.setEnabled(true);
+                        etEmail.setError("Email đã tồn tại");
+                        return;
                     }
+
+                    // Tạo user mới
+                    User newUser = new User();
+                    newUser.setName(name);
+                    newUser.setEmail(email);
+                    newUser.setPhone(phone);
+                    newUser.setAddress(address);
+                    newUser.setPassword(password);
+                    newUser.setCreatedAt(System.currentTimeMillis());
+
+                    db.collection("users").document(email).set(newUser)
+                            .addOnSuccessListener(aVoid -> {
+                                progressBar.setVisibility(View.GONE);
+                                Toast.makeText(RegisterActivity.this, "Đăng ký thành công!", Toast.LENGTH_LONG).show();
+
+                                // Lưu session
+                                saveUserSession(email, name, email, phone, address);
+
+                                // Chuyển về Login
+                                Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
+                                finish();
+                            })
+                            .addOnFailureListener(e -> {
+                                progressBar.setVisibility(View.GONE);
+                                btnRegister.setEnabled(true);
+                                Toast.makeText(RegisterActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            });
                 });
+    }
+
+    private void saveUserSession(String userId, String userName, String userEmail, String userPhone, String userAddress) {
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString("user_id", userId);
+        editor.putString("user_name", userName);
+        editor.putString("user_email", userEmail);
+        editor.putString("user_phone", userPhone);
+        editor.putString("user_address", userAddress);
+        editor.putBoolean("is_logged_in", true);
+        editor.apply();
     }
 }

@@ -7,9 +7,14 @@
     android:background="#F5F5F5">
 
 
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="16dp"
+        android:visibility="gone" />
 
-
-    <!-- Giỏ hàng trống -->
     <LinearLayout
         android:id="@+id/layoutEmpty"
         android:layout_width="match_parent"
@@ -18,17 +23,9 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <ImageView
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:src="@drawable/ic_empty_cart"
-            android:tint="#FF5722"
-            android:alpha="0.6" />
-
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:text="🛒 Giỏ hàng trống"
             android:textSize="18sp"
             android:textStyle="bold"
@@ -37,10 +34,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
             android:text="Hãy thêm món ăn bạn yêu thích nào!"
             android:textSize="14sp"
-            android:textColor="#757575" />
+            android:textColor="#757575"
+            android:layout_marginTop="8dp" />
 
         <Button
             android:id="@+id/btnGoShopping"
@@ -48,13 +45,10 @@
             android:layout_height="40dp"
             android:layout_marginTop="24dp"
             android:text="🛍️ Mua sắm ngay"
-            android:backgroundTint="#FF5722"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp" />
+            android:backgroundTint="#FF5722" />
 
     </LinearLayout>
 
-    <!-- Nội dung giỏ hàng -->
     <LinearLayout
         android:id="@+id/layoutCartContent"
         android:layout_width="match_parent"
@@ -62,7 +56,6 @@
         android:orientation="vertical"
         android:visibility="visible">
 
-        <!-- Danh sách sản phẩm -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvCart"
             android:layout_width="match_parent"
@@ -71,7 +64,6 @@
             android:padding="8dp"
             android:clipToPadding="false" />
 
-        <!-- Phần thanh toán -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,7 +71,6 @@
             android:background="@android:color/white"
             android:elevation="4dp">
 
-            <!-- Voucher -->
             <LinearLayout
                 android:id="@+id/layoutVoucher"
                 android:layout_width="match_parent"
@@ -87,7 +78,6 @@
                 android:orientation="vertical"
                 android:padding="12dp"
                 android:clickable="true"
-                android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
                 <LinearLayout
@@ -137,7 +127,6 @@
                 android:layout_height="1dp"
                 android:background="#E0E0E0" />
 
-            <!-- Thông tin giá -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

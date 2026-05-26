@@ -1,5 +1,6 @@
 package com.example.foodorder;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.MenuItem;
@@ -22,7 +23,6 @@ import java.util.List;
 
 public class HomeActivity extends AppCompatActivity {
 
-    // Khai báo biến
     private BottomNavigationView bottomNavigationView;
     private FirebaseRepository repository;
     private String userId = "user123";
@@ -31,20 +31,28 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Kiểm tra trạng thái đăng nhập
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        boolean isLoggedIn = prefs.getBoolean("is_logged_in", false);
+
+        if (!isLoggedIn) {
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_home);
 
-        // Khởi tạo repository
         repository = FirebaseRepository.getInstance();
         cartItemsList = new ArrayList<>();
 
-        // Lấy userId từ SharedPreferences
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         userId = prefs.getString("user_id", "user123");
 
-        // Khởi tạo bottomNavigationView
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
 
-        // Set listener cho bottom navigation
         bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -77,18 +85,13 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-        // Load giỏ hàng từ Firebase
         loadCartFromFirebase();
 
-        // Mặc định chọn Home
         if (savedInstanceState == null) {
             bottomNavigationView.setSelectedItemId(R.id.nav_home);
         }
     }
 
-    /**
-     * Load giỏ hàng từ Firebase
-     */
     private void loadCartFromFirebase() {
         repository.getCart(userId, new FirebaseRepository.OnDataLoaded<List<CartItem>>() {
             @Override
@@ -104,9 +107,6 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Thêm món ăn vào giỏ hàng
-     */
     public void addToCart(Food food) {
         CartItem cartItem = new CartItem();
         cartItem.setFoodId(food.getId());
@@ -130,16 +130,10 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Lấy danh sách giỏ hàng
-     */
     public List<CartItem> getCartList() {
         return new ArrayList<>(cartItemsList);
     }
 
-    /**
-     * Xóa một món khỏi giỏ hàng
-     */
     public void removeFromCart(String foodId) {
         repository.removeFromCart(userId, foodId, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
@@ -155,9 +149,6 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Cập nhật số lượng món trong giỏ hàng
-     */
     public void updateCartItem(CartItem item) {
         repository.updateCartItem(userId, item, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
@@ -172,9 +163,6 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Xóa toàn bộ giỏ hàng
-     */
     public void clearCart() {
         repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
@@ -190,18 +178,12 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Điều hướng đến Profile
-     */
     public void navigateToProfile() {
         if (bottomNavigationView != null) {
             bottomNavigationView.setSelectedItemId(R.id.nav_profile);
         }
     }
 
-    /**
-     * Điều hướng đến Lịch sử đơn hàng
-     */
     public void navigateToOrderHistory() {
         if (bottomNavigationView != null) {
             bottomNavigationView.setSelectedItemId(R.id.nav_order);

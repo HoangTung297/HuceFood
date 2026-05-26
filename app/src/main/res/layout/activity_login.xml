@@ -37,8 +37,19 @@
         android:hint="Mật khẩu"
         android:inputType="textPassword"
         android:padding="16dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="8dp"
         android:background="@drawable/button_background"/>
+
+    <!-- Quên mật khẩu -->
+    <TextView
+        android:id="@+id/tvForgotPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quên mật khẩu?"
+        android:textSize="12sp"
+        android:textColor="#FF5722"
+        android:layout_gravity="end"
+        android:layout_marginBottom="24dp" />
 
     <Button
         android:id="@+id/btnLogin"
@@ -46,22 +57,24 @@
         android:layout_height="wrap_content"
         android:text="Đăng nhập"
         android:padding="16dp"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#FF5722"
+        android:textColor="@android:color/white" />
 
-    <Button
-        android:id="@+id/btnGoogleLogin"
-        android:layout_width="match_parent"
+    <!-- ProgressBar -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Đăng nhập với Google"
-        android:backgroundTint="#4285F4"
-        android:layout_marginBottom="16dp"/>
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tvRegister"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Chưa có tài khoản? Đăng ký ngay"
-        android:textColor="@color/primary_color"
-        android:textSize="14sp"/>
+        android:textColor="#FF5722"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp" />
 
 </LinearLayout>

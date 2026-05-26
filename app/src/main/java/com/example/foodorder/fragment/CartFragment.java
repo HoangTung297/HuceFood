@@ -1,6 +1,7 @@
 package com.example.foodorder.fragment;
 
 import android.app.AlertDialog;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,7 +21,6 @@ import com.example.foodorder.R;
 import com.example.foodorder.adapter.CartAdapter;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
-import com.example.foodorder.model.Voucher;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.text.NumberFormat;
@@ -43,12 +43,12 @@ public class CartFragment extends Fragment {
     private FirebaseFirestore db;
     private String userId = "user123";
     private double discount = 0;
-    private final double deliveryFee = 15000;
+    private double deliveryFee = 15000;
     private String selectedVoucherCode = null;
     private boolean isCreatingOrder = false;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_cart, container, false);
         initViews(view);
         setupRecyclerView();
@@ -101,8 +101,22 @@ public class CartFragment extends Fragment {
 
             @Override
             public void onItemRemoved(CartItem item, int position) {
-                removeFromCart(item.getFoodId(), position);
+                // Xóa trực tiếp khỏi danh sách trước khi gọi API
+                cartItems.remove(position);
+                adapter.updateList(cartItems);
                 calculateTotals();
+
+                // Sau đó mới gọi API xóa trên server
+                removeFromCart(item.getFoodId());
+
+                if (cartItems.isEmpty()) {
+                    layoutCartContent.setVisibility(View.GONE);
+                    layoutEmpty.setVisibility(View.VISIBLE);
+                    discount = 0;
+                    selectedVoucherCode = null;
+                    tvVoucherApplied.setVisibility(View.GONE);
+                }
+                Toast.makeText(getContext(), "Đã xóa", Toast.LENGTH_SHORT).show();
             }
 
             @Override
@@ -134,9 +148,7 @@ public class CartFragment extends Fragment {
 
             @Override
             public void onError(String error) {
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -147,30 +159,19 @@ public class CartFragment extends Fragment {
             public void onSuccess(Void data) {}
             @Override
             public void onError(String error) {
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void removeFromCart(String foodId, int position) {
+    private void removeFromCart(String foodId) {
         repository.removeFromCart(userId, foodId, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
-            public void onSuccess(Void data) {
-                // Không xóa trực tiếp, reload lại toàn bộ
-                loadCart(); // Reload lại giỏ hàng
-
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Đã xóa", Toast.LENGTH_SHORT).show();
-                }
-            }
-
+            public void onSuccess(Void data) {}
             @Override
             public void onError(String error) {
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+                loadCart(); // Reload nếu lỗi
             }
         });
     }
@@ -181,17 +182,17 @@ public class CartFragment extends Fragment {
             subtotal += item.getTotalPrice();
         }
         double finalTotal = subtotal + deliveryFee - discount;
-        NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
 
-        tvTotalPrice.setText(formatter.format(subtotal) + "đ");
-        tvDeliveryFee.setText(formatter.format(deliveryFee) + "đ");
-        tvDiscount.setText("-" + formatter.format(discount) + "đ");
-        tvFinalTotal.setText(formatter.format(finalTotal) + "đ");
+        tvTotalPrice.setText(f.format(subtotal) + "đ");
+        tvDeliveryFee.setText(f.format(deliveryFee) + "đ");
+        tvDiscount.setText("-" + f.format(discount) + "đ");
+        tvFinalTotal.setText(f.format(finalTotal) + "đ");
 
         if (discount > 0 && selectedVoucherCode != null) {
             tvVoucherApplied.setVisibility(View.VISIBLE);
             tvVoucherApplied.setText("Đã áp dụng: " + selectedVoucherCode);
-            tvVoucherName.setText(selectedVoucherCode + " - Giảm " + formatter.format(discount) + "đ");
+            tvVoucherName.setText(selectedVoucherCode + " - Giảm " + f.format(discount) + "đ");
         } else {
             tvVoucherApplied.setVisibility(View.GONE);
             tvVoucherName.setText("Chưa chọn voucher");
@@ -200,9 +201,7 @@ public class CartFragment extends Fragment {
 
     private void showVoucherDialog() {
         if (cartItems.isEmpty()) {
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
-            }
+            Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -224,68 +223,48 @@ public class CartFragment extends Fragment {
                 Toast.makeText(getContext(), "Nhập mã voucher", Toast.LENGTH_SHORT).show();
             }
         });
-
         btnCancel.setOnClickListener(v -> dialog.dismiss());
     }
 
     private void checkAndApplyVoucher(String code) {
-        if (cartItems.isEmpty()) {
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
-
         double subtotal = 0;
-        for (CartItem item : cartItems) {
-            subtotal += item.getTotalPrice();
-        }
-
+        for (CartItem item : cartItems) subtotal += item.getTotalPrice();
         final double finalSubtotal = subtotal;
 
         db.collection("vouchers")
                 .whereEqualTo("code", code)
                 .whereEqualTo("isActive", true)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        Voucher voucher = queryDocumentSnapshots.getDocuments().get(0).toObject(Voucher.class);
-                        if (finalSubtotal >= voucher.getMinOrder()) {
-                            if ("percent".equals(voucher.getDiscountType())) {
-                                discount = finalSubtotal * voucher.getDiscountValue() / 100;
+                .addOnSuccessListener(query -> {
+                    if (!query.isEmpty()) {
+                        Map<String, Object> data = query.getDocuments().get(0).getData();
+                        String discountType = (String) data.get("discountType");
+                        double discountValue = ((Number) data.get("discountValue")).doubleValue();
+                        double minOrder = ((Number) data.get("minOrder")).doubleValue();
+
+                        if (finalSubtotal >= minOrder) {
+                            if ("percent".equals(discountType)) {
+                                discount = finalSubtotal * discountValue / 100;
                             } else {
-                                discount = voucher.getDiscountValue();
+                                discount = discountValue;
                             }
                             if (discount > finalSubtotal) discount = finalSubtotal;
-                            selectedVoucherCode = voucher.getCode();
+                            selectedVoucherCode = code;
                             calculateTotals();
-                            if (getContext() != null) {
-                                Toast.makeText(getContext(), "Áp dụng thành công!", Toast.LENGTH_SHORT).show();
-                            }
+                            Toast.makeText(getContext(), "Áp dụng thành công!", Toast.LENGTH_SHORT).show();
                         } else {
                             NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
-                            if (getContext() != null) {
-                                Toast.makeText(getContext(), "Đơn hàng tối thiểu " + f.format(voucher.getMinOrder()) + "đ", Toast.LENGTH_SHORT).show();
-                            }
+                            Toast.makeText(getContext(), "Đơn tối thiểu " + f.format(minOrder) + "đ", Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        if (getContext() != null) {
-                            Toast.makeText(getContext(), "Mã voucher không hợp lệ", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    if (getContext() != null) {
-                        Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Mã không hợp lệ", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
     private void showCheckoutDialog() {
         if (cartItems.isEmpty()) {
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
-            }
+            Toast.makeText(getContext(), "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
             return;
         }
         if (isCreatingOrder) return;
@@ -323,18 +302,11 @@ public class CartFragment extends Fragment {
         btnConfirm.setOnClickListener(v -> {
             int selectedId = rgPayment.getCheckedRadioButtonId();
             String paymentMethod = "COD";
-            if (selectedId == R.id.rbCOD) {
-                paymentMethod = "COD";
-            } else if (selectedId == R.id.rbBanking) {
-                paymentMethod = "Banking";
-            } else if (selectedId == R.id.rbMomo) {
-                paymentMethod = "Momo";
-            }
-            String orderNote = etOrderNote.getText().toString();
-            createOrder(orderNote, paymentMethod);
+            if (selectedId == R.id.rbCOD) paymentMethod = "COD";
+            else if (selectedId == R.id.rbMomo) paymentMethod = "Momo";
+            createOrder(etOrderNote.getText().toString(), paymentMethod);
             dialog.dismiss();
         });
-
         btnCancel.setOnClickListener(v -> dialog.dismiss());
     }
 
@@ -370,14 +342,12 @@ public class CartFragment extends Fragment {
         order.setTotalPrice(subtotal);
         order.setDeliveryFee(deliveryFee);
         order.setDiscount(discount);
-        order.setFinalTotal(subtotal + deliveryFee - discount);
+        order.setFinalTotal(Math.max(0, subtotal + deliveryFee - discount));
         order.setStatus("pending");
         order.setCreatedAt(System.currentTimeMillis());
         order.setPaymentMethod(paymentMethod);
         order.setOrderNote(orderNote);
-        if (selectedVoucherCode != null) {
-            order.setVoucherCode(selectedVoucherCode);
-        }
+        if (selectedVoucherCode != null) order.setVoucherCode(selectedVoucherCode);
 
         repository.createOrder(order, new FirebaseRepository.OnDataLoaded<String>() {
             @Override
@@ -388,19 +358,11 @@ public class CartFragment extends Fragment {
                         discount = 0;
                         selectedVoucherCode = null;
                         loadCart();
-
-                        // Refresh các fragment đơn hàng
-                        refreshOrderFragments();
-
                         isCreatingOrder = false;
                         btnCheckout.setEnabled(true);
                         btnCheckout.setText("THANH TOÁN");
-
-                        String paymentText = paymentMethod.equals("COD") ? "Thanh toán khi nhận hàng" :
-                                (paymentMethod.equals("Banking") ? "Chuyển khoản" : "Ví MoMo");
-                        if (getContext() != null) {
-                            Toast.makeText(getContext(), "Đặt hàng thành công!\nMã: #" + orderId + "\n" + paymentText, Toast.LENGTH_LONG).show();
-                        }
+                        String paymentText = paymentMethod.equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo";
+                        Toast.makeText(getContext(), "Đặt hàng thành công!\nMã: #" + orderId + "\n" + paymentText, Toast.LENGTH_LONG).show();
                     }
 
                     @Override
@@ -408,9 +370,7 @@ public class CartFragment extends Fragment {
                         isCreatingOrder = false;
                         btnCheckout.setEnabled(true);
                         btnCheckout.setText("THANH TOÁN");
-                        if (getContext() != null) {
-                            Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                        }
+                        Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
                         loadCart();
                     }
                 });
@@ -421,20 +381,19 @@ public class CartFragment extends Fragment {
                 isCreatingOrder = false;
                 btnCheckout.setEnabled(true);
                 btnCheckout.setText("THANH TOÁN");
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Đặt hàng thất bại: " + error, Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(getContext(), "Đặt hàng thất bại: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void refreshOrderFragments() {
-        if (getParentFragment() instanceof OrderFragment) {
-            ((OrderFragment) getParentFragment()).refreshAllTabs();
-        }
+    public void refreshData() {
+        loadCart();
+        calculateTotals();
     }
 
-    public void refreshData() {
+    @Override
+    public void onResume() {
+        super.onResume();
         loadCart();
         calculateTotals();
     }

@@ -32,11 +32,12 @@ public class RatingFragment extends Fragment {
     private List<Order> orderList;
     private FirebaseRepository repository;
     private String userId = "user123";
-    private boolean isLoading = false;
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_rating_list, container, false);
+
         rvOrders = view.findViewById(R.id.rvOrders);
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
 
@@ -50,6 +51,7 @@ public class RatingFragment extends Fragment {
 
         setupRecyclerView();
         loadOrders();
+
         return view;
     }
 
@@ -60,15 +62,14 @@ public class RatingFragment extends Fragment {
     }
 
     private void loadOrders() {
-        if (isLoading) return;
-        isLoading = true;
-
         repository.getOrdersByStatus(userId, "delivered", new FirebaseRepository.OnDataLoaded<List<Order>>() {
             @Override
             public void onSuccess(List<Order> data) {
                 orderList.clear();
                 for (Order order : data) {
-                    if (!order.isRated()) orderList.add(order);
+                    if (!order.isRated()) {
+                        orderList.add(order);
+                    }
                 }
 
                 if (orderList.isEmpty()) {
@@ -79,13 +80,11 @@ public class RatingFragment extends Fragment {
                     layoutEmpty.setVisibility(View.GONE);
                     adapter.notifyDataSetChanged();
                 }
-                isLoading = false;
             }
 
             @Override
             public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                isLoading = false;
             }
         });
     }
@@ -93,33 +92,39 @@ public class RatingFragment extends Fragment {
     private void showRatingDialog(Order order) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_rating, null);
+
         TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
         RatingBar ratingBar = dialogView.findViewById(R.id.ratingBar);
         EditText etComment = dialogView.findViewById(R.id.etComment);
         Button btnSubmit = dialogView.findViewById(R.id.btnSubmit);
 
         tvRestaurantName.setText(order.getRestaurantName());
-        AlertDialog dialog = builder.setView(dialogView).setTitle("Đánh giá").create();
+
+        AlertDialog dialog = builder.setView(dialogView).setTitle("Đánh giá nhà hàng").create();
         dialog.show();
 
         btnSubmit.setOnClickListener(v -> {
-            float rating = ratingBar.getRating();
-            if (rating == 0) {
-                Toast.makeText(getContext(), "Chọn số sao", Toast.LENGTH_SHORT).show();
+            float ratingValue = ratingBar.getRating();
+            String comment = etComment.getText().toString();
+
+            if (ratingValue == 0) {
+                Toast.makeText(getContext(), "Vui lòng chọn số sao", Toast.LENGTH_SHORT).show();
                 return;
             }
-            saveRating(order, rating, etComment.getText().toString());
+
+            saveRating(order, ratingValue, comment);
             dialog.dismiss();
         });
     }
 
-    private void saveRating(Order order, double rating, String comment) {
-        repository.updateOrderRating(order.getId(), rating, comment, new FirebaseRepository.OnDataLoaded<Void>() {
+    private void saveRating(Order order, double ratingValue, String comment) {
+        repository.updateOrderRating(order.getId(), ratingValue, comment, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
             public void onSuccess(Void data) {
                 Toast.makeText(getContext(), "Cảm ơn bạn đã đánh giá!", Toast.LENGTH_SHORT).show();
                 loadOrders();
             }
+
             @Override
             public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
@@ -127,38 +132,63 @@ public class RatingFragment extends Fragment {
         });
     }
 
+    // THÊM METHOD NÀY
+    public void refreshData() {
+        loadOrders();
+    }
+
+    // Adapter
     static class RatingOrderAdapter extends RecyclerView.Adapter<RatingOrderAdapter.ViewHolder> {
         private List<Order> orders;
         private OnRateClickListener listener;
-        interface OnRateClickListener { void onRateClick(Order order); }
+
+        interface OnRateClickListener {
+            void onRateClick(Order order);
+        }
+
         RatingOrderAdapter(List<Order> orders, OnRateClickListener listener) {
             this.orders = orders;
             this.listener = listener;
         }
-        @NonNull @Override
+
+        @NonNull
+        @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new ViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_order_for_rating, parent, false));
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_order_for_rating, parent, false);
+            return new ViewHolder(view);
         }
+
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            holder.bind(orders.get(position), listener);
+            Order order = orders.get(position);
+            holder.bind(order, listener);
         }
-        @Override public int getItemCount() { return orders.size(); }
+
+        @Override
+        public int getItemCount() {
+            return orders.size();
+        }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
             TextView tvOrderId, tvRestaurantName, tvOrderDate;
             Button btnRate;
-            ViewHolder(@NonNull View v) {
-                super(v);
-                tvOrderId = v.findViewById(R.id.tvOrderId);
-                tvRestaurantName = v.findViewById(R.id.tvRestaurantName);
-                tvOrderDate = v.findViewById(R.id.tvOrderDate);
-                btnRate = v.findViewById(R.id.btnRate);
+
+            ViewHolder(@NonNull View itemView) {
+                super(itemView);
+                tvOrderId = itemView.findViewById(R.id.tvOrderId);
+                tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
+                tvOrderDate = itemView.findViewById(R.id.tvOrderDate);
+                btnRate = itemView.findViewById(R.id.btnRate);
             }
+
             void bind(Order order, OnRateClickListener listener) {
-                tvOrderId.setText("Mã: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
+                tvOrderId.setText("Mã: #" + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
                 tvRestaurantName.setText(order.getRestaurantName());
-                tvOrderDate.setText(new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new java.util.Date(order.getCreatedAt())));
+
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+
                 btnRate.setOnClickListener(v -> listener.onRateClick(order));
             }
         }

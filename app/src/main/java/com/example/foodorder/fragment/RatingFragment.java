@@ -90,6 +90,7 @@ public class RatingFragment extends Fragment {
     }
 
     private void showRatingDialog(Order order) {
+        // Tạo dialog
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_rating, null);
 
@@ -97,12 +98,14 @@ public class RatingFragment extends Fragment {
         RatingBar ratingBar = dialogView.findViewById(R.id.ratingBar);
         EditText etComment = dialogView.findViewById(R.id.etComment);
         Button btnSubmit = dialogView.findViewById(R.id.btnSubmit);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
 
         tvRestaurantName.setText(order.getRestaurantName());
 
         AlertDialog dialog = builder.setView(dialogView).setTitle("Đánh giá nhà hàng").create();
         dialog.show();
 
+        // Nút Gửi
         btnSubmit.setOnClickListener(v -> {
             float ratingValue = ratingBar.getRating();
             String comment = etComment.getText().toString();
@@ -113,6 +116,11 @@ public class RatingFragment extends Fragment {
             }
 
             saveRating(order, ratingValue, comment);
+            dialog.dismiss();
+        });
+
+        // Nút Hủy - đóng dialog
+        btnCancel.setOnClickListener(v -> {
             dialog.dismiss();
         });
     }
@@ -132,7 +140,6 @@ public class RatingFragment extends Fragment {
         });
     }
 
-    // THÊM METHOD NÀY
     public void refreshData() {
         loadOrders();
     }

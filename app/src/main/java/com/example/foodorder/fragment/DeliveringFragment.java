@@ -17,9 +17,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.google.firebase.firestore.FirebaseFirestore;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,6 +34,7 @@ public class DeliveringFragment extends Fragment {
     private DeliveringAdapter adapter;
     private List<Order> orderList;
     private FirebaseRepository repository;
+    private FirebaseFirestore db;
     private String userId = "user123";
     private boolean isLoading = false;
 
@@ -43,6 +46,7 @@ public class DeliveringFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
 
         repository = FirebaseRepository.getInstance();
+        db = FirebaseFirestore.getInstance();
         orderList = new ArrayList<>();
 
         if (getActivity() != null) {
@@ -57,15 +61,9 @@ public class DeliveringFragment extends Fragment {
 
     private void setupRecyclerView() {
         adapter = new DeliveringAdapter(orderList,
-                order -> {
-                    showOrderDetail(order);
-                },
-                (order, position) -> {
-                    showCancelConfirmDialog(order, position);
-                },
-                (order, position) -> {
-                    confirmReceivedOrder(order, position);
-                }
+                order -> showOrderDetail(order),
+                (order, position) -> showCancelConfirmDialog(order, position),
+                (order, position) -> confirmReceivedOrder(order, position)
         );
         rvOrders.setLayoutManager(new LinearLayoutManager(getContext()));
         rvOrders.setAdapter(adapter);
@@ -75,9 +73,7 @@ public class DeliveringFragment extends Fragment {
         new AlertDialog.Builder(getContext())
                 .setTitle("Xác nhận hủy đơn")
                 .setMessage("Bạn có chắc muốn hủy đơn hàng " + order.getOrderCode() + " không?")
-                .setPositiveButton("Hủy đơn", (dialog, which) -> {
-                    cancelOrder(order, position);
-                })
+                .setPositiveButton("Hủy đơn", (dialog, which) -> cancelOrder(order, position))
                 .setNegativeButton("Quay lại", null)
                 .show();
     }
@@ -88,9 +84,28 @@ public class DeliveringFragment extends Fragment {
                 .setMessage("Bạn đã nhận được đơn hàng " + order.getOrderCode() + " chưa?")
                 .setPositiveButton("Đã nhận", (dialog, which) -> {
                     updateOrderStatus(order, "delivered", position);
+                    createDeliveryNotification(order);
                 })
                 .setNegativeButton("Chưa", null)
                 .show();
+    }
+
+    // THÊM METHOD NÀY - TẠO THÔNG BÁO KHI NHẬN HÀNG
+    private void createDeliveryNotification(Order order) {
+        if (getContext() == null) return;
+
+        java.util.HashMap<String, Object> notification = new java.util.HashMap<>();
+        notification.put("userId", userId);
+        notification.put("title", "✅ Đã nhận hàng thành công");
+        notification.put("message", "Đơn hàng #" + order.getOrderCode() + " đã được giao thành công. Cảm ơn bạn đã sử dụng dịch vụ! Hãy đánh giá chất lượng nhà hàng nhé.");
+        notification.put("type", "order");
+        notification.put("createdAt", System.currentTimeMillis());
+        notification.put("isRead", false);
+        notification.put("orderId", order.getOrderCode());
+
+        db.collection("notifications").add(notification)
+                .addOnSuccessListener(docRef -> refreshOtherFragments())
+                .addOnFailureListener(e -> {});
     }
 
     private void cancelOrder(Order order, int position) {
@@ -143,7 +158,6 @@ public class DeliveringFragment extends Fragment {
         });
     }
 
-    // Sửa method showOrderDetail
     private void showOrderDetail(Order order) {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
 
@@ -165,15 +179,12 @@ public class DeliveringFragment extends Fragment {
         tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
         tvStatus.setText(order.getStatusText());
 
-        // Hiển thị danh sách món kèm ghi chú
         StringBuilder itemsText = new StringBuilder();
         if (order.getItems() != null) {
             for (Map<String, Object> item : order.getItems()) {
                 String name = (String) item.get("name");
                 long quantity = ((Number) item.get("quantity")).longValue();
                 itemsText.append("• ").append(name).append(" x").append(quantity);
-
-                // HIỂN THỊ GHI CHÚ CỦA MÓN
                 String note = (String) item.get("note");
                 if (note != null && !note.isEmpty()) {
                     itemsText.append("\n  📝 ").append(note);
@@ -183,7 +194,6 @@ public class DeliveringFragment extends Fragment {
         }
         tvItems.setText(itemsText.toString());
 
-        // Hiển thị ghi chú đơn hàng
         String orderNote = order.getOrderNote();
         if (orderNote != null && !orderNote.isEmpty()) {
             tvOrderNote.setText(orderNote);
@@ -243,7 +253,6 @@ public class DeliveringFragment extends Fragment {
         });
     }
 
-    // THÊM METHOD NÀY
     public void refreshData() {
         loadOrders();
     }
@@ -254,7 +263,7 @@ public class DeliveringFragment extends Fragment {
         loadOrders();
     }
 
-    // Adapter inner class
+    // ==================== ADAPTER INNER CLASS ====================
     static class DeliveringAdapter extends RecyclerView.Adapter<DeliveringAdapter.ViewHolder> {
         private List<Order> orders;
         private OnItemClickListener listener;

@@ -515,6 +515,7 @@ public class CartFragment extends Fragment {
                 repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
                     @Override
                     public void onSuccess(Void data) {
+                        createOrderNotification(orderId);  // <--- THÊM DÒNG NÀY
                         clearSelectedVoucher();
                         loadCart();
                         isApplyingVoucher = false;
@@ -541,6 +542,28 @@ public class CartFragment extends Fragment {
                 Toast.makeText(getContext(), "Đặt hàng thất bại: " + error, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+    // Thêm vào cuối class CartFragment
+    private void createOrderNotification(String orderCode) {
+        if (getActivity() == null) return;
+
+        java.util.HashMap<String, Object> notification = new java.util.HashMap<>();
+        notification.put("userId", userId);
+        notification.put("title", "Đặt hàng thành công 🎉");
+        notification.put("message", "Đơn hàng #" + orderCode + " đã được đặt thành công. Nhà hàng sẽ xác nhận trong giây lát.");
+        notification.put("type", "order");
+        notification.put("createdAt", System.currentTimeMillis());
+        notification.put("isRead", false);
+        notification.put("orderId", orderCode);
+
+        db.collection("notifications").add(notification)
+                .addOnSuccessListener(docRef -> {
+                    // Cập nhật lại tab thông báo nếu đang mở
+                    if (getParentFragment() instanceof OrderFragment) {
+                        OrderFragment orderFragment = (OrderFragment) getParentFragment();
+                        // Có thể gọi refresh tab thông báo ở đây
+                    }
+                });
     }
 
     public void refreshData() {

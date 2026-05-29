@@ -25,4 +25,12 @@
 
     <!-- Màu cho icon launcher -->
     <color name="ic_launcher_background">#FF5722</color>
+
+    <color name="notification_unread_bg">#FFF8E1</color>
+    <color name="selection_overlay">#4D2196F3</color>
+    <color name="divider">#E0E0E0</color>
+
+    <!-- 👇👇👇 THÊM CÁC DÒNG NÀY 👇👇👇 -->
+    <color name="text_tertiary">#9E9E9E</color>
+
 </resources>

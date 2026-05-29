@@ -398,17 +398,28 @@ public class CartFragment extends Fragment {
         Button btnConfirm = dialogView.findViewById(R.id.btnConfirmOrder);
         Button btnCancel = dialogView.findViewById(R.id.btnCancelOrder);
 
-        etDeliveryName.setText(userName);
-        etDeliveryPhone.setText(userPhone);
-        etDeliveryAddress.setText(userAddress);
+        SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+        etDeliveryName.setText(prefs.getString("user_name", ""));
+        etDeliveryPhone.setText(prefs.getString("user_phone", ""));
+        etDeliveryAddress.setText(prefs.getString("user_address", ""));
 
         NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
         double subtotal = 0;
         StringBuilder itemsText = new StringBuilder();
+
         for (CartItem item : cartItems) {
-            itemsText.append("• ").append(item.getName()).append(" x").append(item.getQuantity()).append("\n");
+            // Tên món và số lượng
+            itemsText.append("• ").append(item.getName()).append(" x").append(item.getQuantity());
+
+            // HIỂN THỊ GHI CHÚ CỦA TỪNG MÓN
+            if (item.getNote() != null && !item.getNote().isEmpty()) {
+                itemsText.append("\n  📝 ").append(item.getNote());
+            }
+            itemsText.append("\n");
+
             subtotal += item.getTotalPrice();
         }
+
         tvOrderItems.setText(itemsText.toString());
         double finalTotal = subtotal + deliveryFee - discount;
         tvOrderSubtotal.setText(f.format(subtotal) + "đ");
@@ -438,7 +449,6 @@ public class CartFragment extends Fragment {
                 return;
             }
 
-            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
             prefs.edit().putString("user_name", deliveryName).apply();
             prefs.edit().putString("user_phone", deliveryPhone).apply();
             prefs.edit().putString("user_address", deliveryAddress).apply();

@@ -5,8 +5,10 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -17,8 +19,11 @@ import com.example.foodorder.adapter.OrderHistoryAdapter;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.CacheManager;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class OrderHistoryFragment extends Fragment {
 
@@ -58,7 +63,7 @@ public class OrderHistoryFragment extends Fragment {
     private void setupRecyclerView() {
         adapter = new OrderHistoryAdapter(orderList,
                 order -> {
-                    Toast.makeText(getContext(), "Đơn: " + order.getOrderCode(), Toast.LENGTH_SHORT).show();
+                    showOrderDetail(order);
                 },
                 (order, position) -> {
                     showDeleteConfirmDialog(order, position);
@@ -104,6 +109,65 @@ public class OrderHistoryFragment extends Fragment {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    // HIỂN THỊ CHI TIẾT ĐƠN HÀNG
+    private void showOrderDetail(Order order) {
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
+
+        TextView tvOrderId = dialogView.findViewById(R.id.tvOrderId);
+        TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
+        TextView tvOrderDate = dialogView.findViewById(R.id.tvOrderDate);
+        TextView tvPaymentMethod = dialogView.findViewById(R.id.tvPaymentMethod);
+        TextView tvItems = dialogView.findViewById(R.id.tvItems);
+        TextView tvOrderNote = dialogView.findViewById(R.id.tvOrderNote);
+        TextView tvTotalPrice = dialogView.findViewById(R.id.tvTotalPrice);
+        TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
+        Button btnClose = dialogView.findViewById(R.id.btnClose);
+
+        tvOrderId.setText(order.getOrderCode());
+        tvRestaurantName.setText(order.getRestaurantName());
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+
+        String paymentText = order.getPaymentMethod().equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo";
+        tvPaymentMethod.setText(paymentText);
+        tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
+        tvStatus.setText(order.getStatusText());
+
+        // Hiển thị danh sách món kèm ghi chú
+        StringBuilder itemsText = new StringBuilder();
+        if (order.getItems() != null) {
+            for (Map<String, Object> item : order.getItems()) {
+                String name = (String) item.get("name");
+                long quantity = ((Number) item.get("quantity")).longValue();
+                itemsText.append("• ").append(name).append(" x").append(quantity);
+
+                // Hiển thị ghi chú của món
+                String note = (String) item.get("note");
+                if (note != null && !note.isEmpty()) {
+                    itemsText.append("\n  📝 ").append(note);
+                }
+                itemsText.append("\n");
+            }
+        }
+        tvItems.setText(itemsText.toString());
+
+        // Hiển thị ghi chú đơn hàng
+        String orderNote = order.getOrderNote();
+        if (orderNote != null && !orderNote.isEmpty()) {
+            tvOrderNote.setText(orderNote);
+        } else {
+            tvOrderNote.setText("Không có ghi chú");
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+        dialog.show();
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
     }
 
     private void loadOrders() {

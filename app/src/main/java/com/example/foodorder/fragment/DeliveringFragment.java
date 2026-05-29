@@ -143,21 +143,61 @@ public class DeliveringFragment extends Fragment {
         });
     }
 
+    // Sửa method showOrderDetail
     private void showOrderDetail(Order order) {
-        StringBuilder detail = new StringBuilder();
-        detail.append("📦 Mã đơn: ").append(order.getOrderCode()).append("\n");
-        detail.append("🏠 Nhà hàng: ").append(order.getRestaurantName()).append("\n");
-        detail.append("📅 Ngày đặt: ").append(new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                .format(new java.util.Date(order.getCreatedAt()))).append("\n");
-        detail.append("💰 Tổng tiền: ").append(String.format("%,.0fđ", order.getFinalTotal())).append("\n");
-        detail.append("💳 Thanh toán: ").append(order.getPaymentMethod()).append("\n");
-        detail.append("📝 Ghi chú: ").append(order.getOrderNote() != null ? order.getOrderNote() : "Không có");
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
 
-        new AlertDialog.Builder(getContext())
-                .setTitle("Chi tiết đơn hàng")
-                .setMessage(detail.toString())
-                .setPositiveButton("Đóng", null)
-                .show();
+        TextView tvOrderId = dialogView.findViewById(R.id.tvOrderId);
+        TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
+        TextView tvOrderDate = dialogView.findViewById(R.id.tvOrderDate);
+        TextView tvPaymentMethod = dialogView.findViewById(R.id.tvPaymentMethod);
+        TextView tvItems = dialogView.findViewById(R.id.tvItems);
+        TextView tvOrderNote = dialogView.findViewById(R.id.tvOrderNote);
+        TextView tvTotalPrice = dialogView.findViewById(R.id.tvTotalPrice);
+        TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
+        Button btnClose = dialogView.findViewById(R.id.btnClose);
+
+        tvOrderId.setText(order.getOrderCode());
+        tvRestaurantName.setText(order.getRestaurantName());
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+        tvPaymentMethod.setText(order.getPaymentMethod().equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo");
+        tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
+        tvStatus.setText(order.getStatusText());
+
+        // Hiển thị danh sách món kèm ghi chú
+        StringBuilder itemsText = new StringBuilder();
+        if (order.getItems() != null) {
+            for (Map<String, Object> item : order.getItems()) {
+                String name = (String) item.get("name");
+                long quantity = ((Number) item.get("quantity")).longValue();
+                itemsText.append("• ").append(name).append(" x").append(quantity);
+
+                // HIỂN THỊ GHI CHÚ CỦA MÓN
+                String note = (String) item.get("note");
+                if (note != null && !note.isEmpty()) {
+                    itemsText.append("\n  📝 ").append(note);
+                }
+                itemsText.append("\n");
+            }
+        }
+        tvItems.setText(itemsText.toString());
+
+        // Hiển thị ghi chú đơn hàng
+        String orderNote = order.getOrderNote();
+        if (orderNote != null && !orderNote.isEmpty()) {
+            tvOrderNote.setText(orderNote);
+        } else {
+            tvOrderNote.setText("Không có ghi chú");
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+        dialog.show();
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
     }
 
     private void refreshOtherFragments() {

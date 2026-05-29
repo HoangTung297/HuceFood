@@ -1,5 +1,6 @@
 package com.example.foodorder.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.LayoutInflater;
@@ -7,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -27,17 +29,19 @@ public class OrderReceivedFragment extends Fragment {
 
     private RecyclerView rvOrders;
     private LinearLayout layoutEmpty;
+    private ProgressBar progressBar;
     private OrderReceivedAdapter adapter;
     private List<Order> orderList;
     private FirebaseRepository repository;
     private String userId = "user123";
+    private boolean isLoading = false;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_order_list, container, false);
-
         rvOrders = view.findViewById(R.id.rvOrders);
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
+        progressBar = view.findViewById(R.id.progressBar);
 
         repository = FirebaseRepository.getInstance();
         orderList = new ArrayList<>();
@@ -49,22 +53,26 @@ public class OrderReceivedFragment extends Fragment {
 
         setupRecyclerView();
         loadOrders();
-
         return view;
     }
 
     private void setupRecyclerView() {
-        adapter = new OrderReceivedAdapter(orderList, order -> reorder(order));
+        adapter = new OrderReceivedAdapter(orderList, order -> reorder(order), order -> showOrderDetail(order));
         rvOrders.setLayoutManager(new LinearLayoutManager(getContext()));
         rvOrders.setAdapter(adapter);
     }
 
     private void loadOrders() {
+        if (isLoading) return;
+        isLoading = true;
+        progressBar.setVisibility(View.VISIBLE);
+
         repository.getOrdersByStatus(userId, "delivered", new FirebaseRepository.OnDataLoaded<List<Order>>() {
             @Override
             public void onSuccess(List<Order> data) {
                 orderList.clear();
                 orderList.addAll(data);
+                adapter.updateList(orderList);
 
                 if (orderList.isEmpty()) {
                     rvOrders.setVisibility(View.GONE);
@@ -72,13 +80,16 @@ public class OrderReceivedFragment extends Fragment {
                 } else {
                     rvOrders.setVisibility(View.VISIBLE);
                     layoutEmpty.setVisibility(View.GONE);
-                    adapter.updateList(orderList);
                 }
+                progressBar.setVisibility(View.GONE);
+                isLoading = false;
             }
 
             @Override
             public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+                progressBar.setVisibility(View.GONE);
+                isLoading = false;
             }
         });
     }
@@ -118,18 +129,78 @@ public class OrderReceivedFragment extends Fragment {
         }, 1000);
     }
 
-    // ==================== ADAPTER ====================
-    static class OrderReceivedAdapter extends RecyclerView.Adapter<OrderReceivedAdapter.ViewHolder> {
-        private List<Order> orders;
-        private OnReorderListener listener;
+    // HIỂN THỊ CHI TIẾT ĐƠN HÀNG
+    private void showOrderDetail(Order order) {
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
 
-        interface OnReorderListener {
-            void onReorder(Order order);
+        TextView tvOrderId = dialogView.findViewById(R.id.tvOrderId);
+        TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
+        TextView tvOrderDate = dialogView.findViewById(R.id.tvOrderDate);
+        TextView tvPaymentMethod = dialogView.findViewById(R.id.tvPaymentMethod);
+        TextView tvItems = dialogView.findViewById(R.id.tvItems);
+        TextView tvOrderNote = dialogView.findViewById(R.id.tvOrderNote);
+        TextView tvTotalPrice = dialogView.findViewById(R.id.tvTotalPrice);
+        TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
+        Button btnClose = dialogView.findViewById(R.id.btnClose);
+
+        tvOrderId.setText(order.getOrderCode());
+        tvRestaurantName.setText(order.getRestaurantName());
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+
+        String paymentText = order.getPaymentMethod().equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo";
+        tvPaymentMethod.setText(paymentText);
+        tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
+        tvStatus.setText(order.getStatusText());
+
+        // Hiển thị danh sách món kèm ghi chú
+        StringBuilder itemsText = new StringBuilder();
+        if (order.getItems() != null) {
+            for (Map<String, Object> item : order.getItems()) {
+                String name = (String) item.get("name");
+                long quantity = ((Number) item.get("quantity")).longValue();
+                itemsText.append("• ").append(name).append(" x").append(quantity);
+
+                // Hiển thị ghi chú của món
+                String note = (String) item.get("note");
+                if (note != null && !note.isEmpty()) {
+                    itemsText.append("\n  📝 ").append(note);
+                }
+                itemsText.append("\n");
+            }
+        }
+        tvItems.setText(itemsText.toString());
+
+        // Hiển thị ghi chú đơn hàng
+        String orderNote = order.getOrderNote();
+        if (orderNote != null && !orderNote.isEmpty()) {
+            tvOrderNote.setText(orderNote);
+        } else {
+            tvOrderNote.setText("Không có ghi chú");
         }
 
-        OrderReceivedAdapter(List<Order> orders, OnReorderListener listener) {
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+        dialog.show();
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+    }
+
+    // Adapter
+    static class OrderReceivedAdapter extends RecyclerView.Adapter<OrderReceivedAdapter.ViewHolder> {
+        private List<Order> orders;
+        private OnReorderListener reorderListener;
+        private OnItemClickListener itemClickListener;
+
+        interface OnReorderListener { void onReorder(Order order); }
+        interface OnItemClickListener { void onItemClick(Order order); }
+
+        OrderReceivedAdapter(List<Order> orders, OnReorderListener reorderListener, OnItemClickListener itemClickListener) {
             this.orders = orders;
-            this.listener = listener;
+            this.reorderListener = reorderListener;
+            this.itemClickListener = itemClickListener;
         }
 
         @NonNull
@@ -143,7 +214,7 @@ public class OrderReceivedFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Order order = orders.get(position);
-            holder.bind(order, listener);
+            holder.bind(order, reorderListener, itemClickListener);
         }
 
         @Override
@@ -170,7 +241,7 @@ public class OrderReceivedFragment extends Fragment {
                 btnReorder = itemView.findViewById(R.id.btnReorder);
             }
 
-            void bind(Order order, OnReorderListener listener) {
+            void bind(Order order, OnReorderListener reorderListener, OnItemClickListener itemClickListener) {
                 tvOrderId.setText("Mã: #" + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
 
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
@@ -184,13 +255,21 @@ public class OrderReceivedFragment extends Fragment {
                     for (Map<String, Object> item : order.getItems()) {
                         String name = item.get("name") != null ? item.get("name").toString() : "Món ăn";
                         int quantity = ((Number) item.get("quantity")).intValue();
-                        itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
+                        itemsText.append("• ").append(name).append(" x").append(quantity);
+
+                        // Hiển thị ghi chú
+                        String note = (String) item.get("note");
+                        if (note != null && !note.isEmpty()) {
+                            itemsText.append("\n  📝 ").append(note);
+                        }
+                        itemsText.append("\n");
                     }
                 }
                 tvFoodItems.setText(itemsText.toString());
                 tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
 
-                btnReorder.setOnClickListener(v -> listener.onReorder(order));
+                btnReorder.setOnClickListener(v -> reorderListener.onReorder(order));
+                itemView.setOnClickListener(v -> itemClickListener.onItemClick(order));
             }
         }
     }

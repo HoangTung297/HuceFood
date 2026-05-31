@@ -202,6 +202,7 @@
                     android:paddingStart="16dp"
                     android:background="?attr/selectableItemBackground" />
 
+<<<<<<< Updated upstream
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
@@ -234,6 +235,23 @@
             android:backgroundTint="#F44336"
             android:textColor="@android:color/white"
             app:cornerRadius="8dp" />
+=======
+        <!-- Nút sửa thông tin -->
+        <Button
+            android:id="@+id/btnEditProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✏️ Sửa thông tin"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Nút Đăng xuất -->
+        <Button
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/holo_red_dark"
+            android:text="🚪 Đăng xuất" />
+>>>>>>> Stashed changes
 
     </LinearLayout>
 

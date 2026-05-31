@@ -10,6 +10,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
@@ -54,7 +55,6 @@ public class FoodDetailActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         repository = FirebaseRepository.getInstance();
 
-        // Lấy userId từ SharedPreferences
         if (getSharedPreferences("UserPrefs", MODE_PRIVATE) != null) {
             userId = getSharedPreferences("UserPrefs", MODE_PRIVATE)
                     .getString("user_id", "");
@@ -154,7 +154,6 @@ public class FoodDetailActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // XỬ LÝ NÚT TIM
         ivFavorite.setOnClickListener(v -> {
             if (isProcessing) return;
             isProcessing = true;
@@ -162,31 +161,9 @@ public class FoodDetailActivity extends AppCompatActivity {
             if (isFavorite) {
                 removeFromFavorites();
             } else {
-                checkBeforeAdd();
+                addToFavorites();
             }
         });
-    }
-
-    private void checkBeforeAdd() {
-        db.collection("favorites")
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("foodId", currentFood.getId())
-                .get()
-                .addOnSuccessListener(query -> {
-                    if (!query.isEmpty()) {
-                        isFavorite = true;
-                        favoriteDocId = query.getDocuments().get(0).getId();
-                        ivFavorite.setImageResource(R.drawable.ic_favorite_filled);
-                        Toast.makeText(this, "Món này đã có trong yêu thích", Toast.LENGTH_SHORT).show();
-                    } else {
-                        addToFavorites();
-                    }
-                    isProcessing = false;
-                })
-                .addOnFailureListener(e -> {
-                    addToFavorites();
-                    isProcessing = false;
-                });
     }
 
     private void onFoodClick(Food food) {
@@ -249,7 +226,7 @@ public class FoodDetailActivity extends AppCompatActivity {
                 });
     }
 
-    // KIỂM TRA TRẠNG THÁI YÊU THÍCH
+    // KIỂM TRA TRẠNG THÁI YÊU THÍCH VÀ CẬP NHẬT ICON
     private void checkIfFavorite() {
         if (userId.isEmpty() || currentFood == null) return;
 
@@ -261,16 +238,27 @@ public class FoodDetailActivity extends AppCompatActivity {
                     if (!query.isEmpty()) {
                         isFavorite = true;
                         favoriteDocId = query.getDocuments().get(0).getId();
-                        ivFavorite.setImageResource(R.drawable.ic_favorite_filled);
+                        updateFavoriteIcon(true);
                     } else {
                         isFavorite = false;
                         favoriteDocId = null;
-                        ivFavorite.setImageResource(R.drawable.ic_favorite);
+                        updateFavoriteIcon(false);
                     }
                 })
                 .addOnFailureListener(e -> {
-                    ivFavorite.setImageResource(R.drawable.ic_favorite);
+                    updateFavoriteIcon(false);
                 });
+    }
+
+    // CẬP NHẬT ICON TIM
+    private void updateFavoriteIcon(boolean isFav) {
+        if (isFav) {
+            ivFavorite.setImageResource(R.drawable.ic_favorite_filled);
+            ivFavorite.setColorFilter(ContextCompat.getColor(this, R.color.red));
+        } else {
+            ivFavorite.setImageResource(R.drawable.ic_favorite);
+            ivFavorite.setColorFilter(ContextCompat.getColor(this, android.R.color.white));
+        }
     }
 
     // THÊM VÀO YÊU THÍCH
@@ -296,7 +284,7 @@ public class FoodDetailActivity extends AppCompatActivity {
                 .addOnSuccessListener(doc -> {
                     isFavorite = true;
                     favoriteDocId = doc.getId();
-                    ivFavorite.setImageResource(R.drawable.ic_favorite_filled);
+                    updateFavoriteIcon(true);
                     Toast.makeText(this, "✅ Đã thêm vào yêu thích", Toast.LENGTH_SHORT).show();
                     isProcessing = false;
                 })
@@ -313,7 +301,7 @@ public class FoodDetailActivity extends AppCompatActivity {
                     .addOnSuccessListener(aVoid -> {
                         isFavorite = false;
                         favoriteDocId = null;
-                        ivFavorite.setImageResource(R.drawable.ic_favorite);
+                        updateFavoriteIcon(false);
                         Toast.makeText(this, "🗑️ Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
                         isProcessing = false;
                     })
@@ -332,7 +320,7 @@ public class FoodDetailActivity extends AppCompatActivity {
                         }
                         isFavorite = false;
                         favoriteDocId = null;
-                        ivFavorite.setImageResource(R.drawable.ic_favorite);
+                        updateFavoriteIcon(false);
                         Toast.makeText(this, "🗑️ Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
                         isProcessing = false;
                     });

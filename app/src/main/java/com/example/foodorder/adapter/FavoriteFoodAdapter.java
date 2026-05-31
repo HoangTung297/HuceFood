@@ -51,7 +51,7 @@ public class FavoriteFoodAdapter extends RecyclerView.Adapter<FavoriteFoodAdapte
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_favorite_food, parent, false);
+                .inflate(R.layout.item_favorite, parent, false);
         return new ViewHolder(view);
     }
 
@@ -86,7 +86,6 @@ public class FavoriteFoodAdapter extends RecyclerView.Adapter<FavoriteFoodAdapte
             tvRating = itemView.findViewById(R.id.tvRating);
             tvPrice = itemView.findViewById(R.id.tvPrice);
             ratingBar = itemView.findViewById(R.id.ratingBar);
-            btnRemoveFavorite = itemView.findViewById(R.id.btnRemoveFavorite);
             btnAddToCart = itemView.findViewById(R.id.btnAddToCart);
         }
 

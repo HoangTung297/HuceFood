@@ -1,124 +1,87 @@
 package com.example.foodorder.fragment;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
 import com.example.foodorder.FoodDetailActivity;
-import com.example.foodorder.HomeActivity;
 import com.example.foodorder.R;
-import com.example.foodorder.adapter.FavoriteFoodAdapter;
-import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Locale;
 
 public class FavoriteFragment extends Fragment {
 
     private RecyclerView rvFavorites;
     private LinearLayout layoutEmpty;
-    private ProgressBar progressBar;
-    private Toolbar toolbar;
-    private Button btnGoToHome;
-
-    private FavoriteFoodAdapter adapter;
+    private FavoriteAdapter adapter;
     private List<Food> favoriteList;
-    private Set<String> favoriteIds;
     private FirebaseFirestore db;
     private FirebaseRepository repository;
-    private String userId = "";
+    private String userId = "user123";
+
+    // Khai báo interface ở đây (không có static)
+    interface OnItemClickListener {
+        void onItemClick(Food food);
+    }
+
+    interface OnRemoveClickListener {
+        void onRemoveClick(Food food, int position);
+    }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_favorite, container, false);
 
-        initViews(view);
-        setupToolbar();
-        setupRecyclerView();
-
-        if (getActivity() != null) {
-            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
-            userId = prefs.getString("user_id", "");
-            if (userId.isEmpty()) {
-                userId = prefs.getString("user_email", "user123");
-            }
-        }
+        rvFavorites = view.findViewById(R.id.rvFavorites);
+        layoutEmpty = view.findViewById(R.id.layoutEmpty);
 
         db = FirebaseFirestore.getInstance();
         repository = FirebaseRepository.getInstance();
+        favoriteList = new ArrayList<>();
 
+        if (getActivity() != null) {
+            userId = getActivity().getSharedPreferences("UserPrefs", 0)
+                    .getString("user_id", "user123");
+            if (userId.isEmpty()) {
+                userId = getActivity().getSharedPreferences("UserPrefs", 0)
+                        .getString("user_email", "user123");
+            }
+        }
+
+        setupRecyclerView();
         loadFavorites();
 
         return view;
     }
 
-    private void initViews(View view) {
-        rvFavorites = view.findViewById(R.id.rvFavorites);
-        layoutEmpty = view.findViewById(R.id.layoutEmpty);
-        progressBar = view.findViewById(R.id.progressBar);
-        toolbar = view.findViewById(R.id.toolbar);
-        btnGoToHome = view.findViewById(R.id.btnGoToHome);
-
-        favoriteList = new ArrayList<>();
-        favoriteIds = new HashSet<>();
-
-        btnGoToHome.setOnClickListener(v -> {
-            if (getActivity() instanceof HomeActivity) {
-                getActivity().getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.fragment_container, new HomeFragment())
-                        .commit();
-            }
-        });
-    }
-
-    private void setupToolbar() {
-        // SỬA LẠI PHẦN TOOLBAR - TRÁNH NULL
-        if (getActivity() != null) {
-            // Đảm bảo toolbar không null
-            if (toolbar != null) {
-                // Nếu activity có hỗ trợ action bar thì set
-                if (((HomeActivity) getActivity()).getSupportActionBar() != null) {
-                    ((HomeActivity) getActivity()).setSupportActionBar(toolbar);
-                    ((HomeActivity) getActivity()).getSupportActionBar().setTitle("Yêu thích của tôi");
-                    ((HomeActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-                }
-            }
-        }
-
-        // XỬ LÝ NÚT BACK - CÁCH AN TOÀN
-        toolbar.setNavigationOnClickListener(v -> {
-            if (getActivity() != null) {
-                // Quay lại Fragment trước đó thay vì finish activity
-                getActivity().getSupportFragmentManager().popBackStack();
-            }
-        });
-    }
-
     private void setupRecyclerView() {
-        adapter = new FavoriteFoodAdapter(
-                favoriteList,
-                this::onFoodClick,
-                this::onRemoveFavorite,
-                this::onAddToCart
+        adapter = new FavoriteAdapter(favoriteList,
+                food -> {
+                    Intent intent = new Intent(getContext(), FoodDetailActivity.class);
+                    intent.putExtra("food", food);
+                    startActivity(intent);
+                },
+                (food, position) -> {
+                    removeFromFavorites(food, position);
+                }
         );
         rvFavorites.setLayoutManager(new LinearLayoutManager(getContext()));
         rvFavorites.setAdapter(adapter);
@@ -126,126 +89,153 @@ public class FavoriteFragment extends Fragment {
 
     private void loadFavorites() {
         if (userId.isEmpty()) {
-            showEmptyState();
+            layoutEmpty.setVisibility(View.VISIBLE);
+            rvFavorites.setVisibility(View.GONE);
             return;
         }
-
-        progressBar.setVisibility(View.VISIBLE);
-        rvFavorites.setVisibility(View.GONE);
-        layoutEmpty.setVisibility(View.GONE);
 
         db.collection("favorites")
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     favoriteList.clear();
-                    favoriteIds.clear();
-
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         String foodId = doc.getString("foodId");
-
-                        if (favoriteIds.contains(foodId)) {
-                            continue;
-                        }
-
                         String foodName = doc.getString("foodName");
-                        String foodDescription = doc.getString("foodDescription");
                         String foodImage = doc.getString("foodImage");
                         String restaurantName = doc.getString("restaurantName");
                         Double price = doc.getDouble("price");
                         Double rating = doc.getDouble("rating");
-                        if (rating == null) rating = 0.0;
+                        String favoriteId = doc.getId();
 
-                        Food food = new Food(foodId, foodName, foodDescription != null ? foodDescription : "",
-                                price != null ? price : 0, "", "");
+                        Food food = new Food(foodId != null ? foodId : "",
+                                foodName != null ? foodName : "Món ăn",
+                                "",
+                                price != null ? price : 0,
+                                "",
+                                "");
                         food.setImageUrl(foodImage != null ? foodImage : "");
-                        food.setRestaurantName(restaurantName != null ? restaurantName : "");
-                        food.setRating(rating);
-
+                        food.setRestaurantName(restaurantName != null ? restaurantName : "Nhà hàng");
+                        food.setRating(rating != null ? rating : 0);
+                        food.setFavoriteId(favoriteId);
                         favoriteList.add(food);
-                        favoriteIds.add(foodId);
                     }
 
-                    progressBar.setVisibility(View.GONE);
-
                     if (favoriteList.isEmpty()) {
-                        showEmptyState();
+                        rvFavorites.setVisibility(View.GONE);
+                        layoutEmpty.setVisibility(View.VISIBLE);
                     } else {
                         rvFavorites.setVisibility(View.VISIBLE);
                         layoutEmpty.setVisibility(View.GONE);
-                        adapter.updateList(favoriteList);
+                        adapter.notifyDataSetChanged();
                     }
-                })
-                .addOnFailureListener(e -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    showEmptyState();
-                });
-    }
-
-    private void showEmptyState() {
-        rvFavorites.setVisibility(View.GONE);
-        layoutEmpty.setVisibility(View.VISIBLE);
-    }
-
-    private void onFoodClick(Food food) {
-        if (getActivity() == null) return;
-        Intent intent = new Intent(getActivity(), FoodDetailActivity.class);
-        intent.putExtra("food", food);
-        startActivity(intent);
-    }
-
-    private void onRemoveFavorite(Food food, int position) {
-        if (userId.isEmpty()) return;
-
-        db.collection("favorites")
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("foodId", food.getId())
-                .get()
-                .addOnSuccessListener(query -> {
-                    for (QueryDocumentSnapshot doc : query) {
-                        doc.getReference().delete();
-                    }
-                    favoriteList.remove(position);
-                    favoriteIds.remove(food.getId());
-                    adapter.updateList(favoriteList);
-
-                    if (favoriteList.isEmpty()) {
-                        showEmptyState();
-                    }
-
-                    Toast.makeText(getContext(), "Đã xóa " + food.getName() + " khỏi yêu thích", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
-    private void onAddToCart(Food food) {
-        CartItem cartItem = new CartItem();
-        cartItem.setFoodId(food.getId());
-        cartItem.setName(food.getName());
-        cartItem.setPrice(food.getPrice());
-        cartItem.setQuantity(1);
-        cartItem.setRestaurantId(food.getRestaurantName());
-        cartItem.setImageUrl(food.getImageUrl());
+    private void removeFromFavorites(Food food, int position) {
+        if (food.getFavoriteId() != null && !food.getFavoriteId().isEmpty()) {
+            db.collection("favorites").document(food.getFavoriteId()).delete()
+                    .addOnSuccessListener(aVoid -> {
+                        favoriteList.remove(position);
+                        adapter.notifyItemRemoved(position);
+                        Toast.makeText(getContext(), "Đã xóa " + food.getName() + " khỏi yêu thích", Toast.LENGTH_SHORT).show();
 
-        repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                Toast.makeText(getContext(), "Đã thêm " + food.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onError(String error) {
-                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
+                        if (favoriteList.isEmpty()) {
+                            rvFavorites.setVisibility(View.GONE);
+                            layoutEmpty.setVisibility(View.VISIBLE);
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
         loadFavorites();
+    }
+
+    // ==================== ADAPTER ====================
+    class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.ViewHolder> {
+        private List<Food> favorites;
+        private OnItemClickListener itemClickListener;
+        private OnRemoveClickListener removeClickListener;
+
+        FavoriteAdapter(List<Food> favorites, OnItemClickListener itemClickListener, OnRemoveClickListener removeClickListener) {
+            this.favorites = favorites;
+            this.itemClickListener = itemClickListener;
+            this.removeClickListener = removeClickListener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_favorite, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            Food food = favorites.get(position);
+            holder.bind(food, itemClickListener, removeClickListener, position);
+        }
+
+        @Override
+        public int getItemCount() {
+            return favorites.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            ImageView ivFoodImage;
+            TextView tvFoodName, tvRestaurantName, tvPrice, tvRating;
+            ImageView ivRemove;
+
+            ViewHolder(@NonNull View itemView) {
+                super(itemView);
+                ivFoodImage = itemView.findViewById(R.id.ivFoodImage);
+                tvFoodName = itemView.findViewById(R.id.tvFoodName);
+                tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
+                tvPrice = itemView.findViewById(R.id.tvPrice);
+                tvRating = itemView.findViewById(R.id.tvRating);
+                ivRemove = itemView.findViewById(R.id.ivRemove);
+            }
+
+            void bind(Food food, OnItemClickListener itemClickListener, OnRemoveClickListener removeClickListener, int position) {
+                NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+
+                tvFoodName.setText(food.getName());
+                tvRestaurantName.setText(food.getRestaurantName());
+                tvPrice.setText(f.format(food.getPrice()) + "đ");
+                tvRating.setText(String.format("%.1f", food.getRating()) + " ★");
+
+                if (food.getImageUrl() != null && !food.getImageUrl().isEmpty()) {
+                    Glide.with(itemView.getContext())
+                            .load(food.getImageUrl())
+                            .placeholder(R.drawable.ic_food_default)
+                            .error(R.drawable.ic_food_default)
+                            .into(ivFoodImage);
+                }
+
+                if (ivRemove != null) {
+                    ivRemove.setOnClickListener(v -> {
+                        if (removeClickListener != null) {
+                            removeClickListener.onRemoveClick(food, position);
+                        }
+                    });
+                }
+
+                itemView.setOnClickListener(v -> {
+                    if (itemClickListener != null) {
+                        itemClickListener.onItemClick(food);
+                    }
+                });
+            }
+        }
     }
 }

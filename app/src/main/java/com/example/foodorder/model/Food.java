@@ -12,6 +12,7 @@ public class Food implements Serializable {
     private String category;
     private String restaurantId;
     private String restaurantName;
+    private String favoriteId;
     private double rating;
     private int soldCount;
     private boolean isBestSeller;
@@ -50,6 +51,8 @@ public class Food implements Serializable {
     public boolean isBestSeller() { return isBestSeller; }
     public double getDistance() { return distance; }
 
+    public String getFavoriteId() { return favoriteId; }
+
     // Setters
     public void setId(String id) { this.id = id; }
     public void setName(String name) { this.name = name; }
@@ -64,4 +67,6 @@ public class Food implements Serializable {
     public void setSoldCount(int soldCount) { this.soldCount = soldCount; }
     public void setBestSeller(boolean bestSeller) { isBestSeller = bestSeller; }
     public void setDistance(double distance) { this.distance = distance; }
+
+    public void setFavoriteId(String favoriteId) { this.favoriteId = favoriteId; }
 }

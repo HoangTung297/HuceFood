@@ -2,6 +2,7 @@ package com.example.foodorder.fragment;
 
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -107,7 +108,13 @@ public class CartFragment extends Fragment {
             SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
             userName = prefs.getString("user_name", "");
             userPhone = prefs.getString("user_phone", "");
+            // Lấy địa chỉ từ cùng SharedPreferences với HomeFragment
             userAddress = prefs.getString("user_address", "");
+
+            // Nếu chưa có, lấy từ delivery_address (cũ)
+            if (userAddress.isEmpty()) {
+                userAddress = prefs.getString("delivery_address", "");
+            }
         }
 
         if (userName.isEmpty() || userPhone.isEmpty()) {
@@ -248,7 +255,6 @@ public class CartFragment extends Fragment {
         Button btnApplyVoucher = dialogView.findViewById(R.id.btnApplyVoucher);
         Button btnCancelVoucher = dialogView.findViewById(R.id.btnCancelVoucher);
 
-        // Lưu voucher được chọn tạm thời
         final Voucher[] tempSelectedVoucher = {null};
         final int[] tempSelectedPosition = {-1};
 
@@ -399,24 +405,20 @@ public class CartFragment extends Fragment {
         Button btnCancel = dialogView.findViewById(R.id.btnCancelOrder);
 
         SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
-        etDeliveryName.setText(prefs.getString("user_name", ""));
-        etDeliveryPhone.setText(prefs.getString("user_phone", ""));
-        etDeliveryAddress.setText(prefs.getString("user_address", ""));
+        etDeliveryName.setText(userName);
+        etDeliveryPhone.setText(userPhone);
+        etDeliveryAddress.setText(userAddress);
 
         NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
         double subtotal = 0;
         StringBuilder itemsText = new StringBuilder();
 
         for (CartItem item : cartItems) {
-            // Tên món và số lượng
             itemsText.append("• ").append(item.getName()).append(" x").append(item.getQuantity());
-
-            // HIỂN THỊ GHI CHÚ CỦA TỪNG MÓN
             if (item.getNote() != null && !item.getNote().isEmpty()) {
                 itemsText.append("\n  📝 ").append(item.getNote());
             }
             itemsText.append("\n");
-
             subtotal += item.getTotalPrice();
         }
 
@@ -449,6 +451,7 @@ public class CartFragment extends Fragment {
                 return;
             }
 
+            // Lưu lại thông tin người dùng
             prefs.edit().putString("user_name", deliveryName).apply();
             prefs.edit().putString("user_phone", deliveryPhone).apply();
             prefs.edit().putString("user_address", deliveryAddress).apply();
@@ -515,7 +518,7 @@ public class CartFragment extends Fragment {
                 repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
                     @Override
                     public void onSuccess(Void data) {
-                        createOrderNotification(orderId);  // <--- THÊM DÒNG NÀY
+                        createOrderNotification(orderId);
                         clearSelectedVoucher();
                         loadCart();
                         isApplyingVoucher = false;
@@ -543,7 +546,7 @@ public class CartFragment extends Fragment {
             }
         });
     }
-    // Thêm vào cuối class CartFragment
+
     private void createOrderNotification(String orderCode) {
         if (getActivity() == null) return;
 
@@ -558,11 +561,10 @@ public class CartFragment extends Fragment {
 
         db.collection("notifications").add(notification)
                 .addOnSuccessListener(docRef -> {
-                    // Cập nhật lại tab thông báo nếu đang mở
-                    if (getParentFragment() instanceof OrderFragment) {
-                        OrderFragment orderFragment = (OrderFragment) getParentFragment();
-                        // Có thể gọi refresh tab thông báo ở đây
-                    }
+                    Log.d("CartFragment", "Đã tạo thông báo cho đơn hàng: " + orderCode);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("CartFragment", "Lỗi tạo thông báo: " + e.getMessage());
                 });
     }
 

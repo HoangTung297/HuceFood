@@ -10,12 +10,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;  // THÊM DÒNG NÀY
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -29,10 +30,12 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.foodorder.FoodDetailActivity;
 import com.example.foodorder.HomeActivity;
 import com.example.foodorder.R;
+import com.example.foodorder.adapter.AddressSuggestionAdapter;
 import com.example.foodorder.adapter.BannerAdapter;
 import com.example.foodorder.adapter.CategoryAdapter;
 import com.example.foodorder.adapter.FoodAdapter;
 import com.example.foodorder.adapter.VoucherAdapter;
+import com.example.foodorder.model.AddressSuggestion;
 import com.example.foodorder.model.Banner;
 import com.example.foodorder.model.Category;
 import com.example.foodorder.model.Food;
@@ -50,18 +53,20 @@ public class HomeFragment extends Fragment {
     private ViewPager2 bannerViewPager;
     private RecyclerView rvFlashSale, rvHotDeals, rvVouchers, rvCategories, rvAllFoods;
     private TextView tvAddress, tvStatus;
-    private ImageView ivAvatar, ivClearSearch, ivSearchIcon;
+    private ImageView ivAvatar, ivClearSearch;
     private EditText etSearch;
     private View layoutAddress;
 
     // Data
     private List<Food> allFoodsList;
     private List<Voucher> voucherList;
+    private List<AddressSuggestion> addressSuggestions;
 
     private FoodAdapter flashSaleAdapter, hotDealAdapter, allFoodsAdapter;
     private VoucherAdapter voucherAdapter;
     private CategoryAdapter categoryAdapter;
     private BannerAdapter bannerAdapter;
+    private AddressSuggestionAdapter addressSuggestionAdapter;
 
     // Firebase
     private FirebaseFirestore firestore;
@@ -87,6 +92,7 @@ public class HomeFragment extends Fragment {
 
         allFoodsList = new ArrayList<>();
         voucherList = new ArrayList<>();
+        addressSuggestions = new ArrayList<>();
 
         firestore = FirebaseFirestore.getInstance();
 
@@ -217,7 +223,6 @@ public class HomeFragment extends Fragment {
             if (cachedVouchers != null && !cachedVouchers.isEmpty()) {
                 voucherList.clear();
                 voucherList.addAll(cachedVouchers);
-                // SỬA: Thêm null làm tham số thứ hai
                 voucherAdapter = new VoucherAdapter(voucherList, null);
                 rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
                 rvVouchers.setAdapter(voucherAdapter);
@@ -251,7 +256,6 @@ public class HomeFragment extends Fragment {
                     if (cacheManager != null) {
                         cacheManager.cacheVouchers(voucherList);
                     }
-                    // SỬA: Thêm null làm tham số thứ hai
                     voucherAdapter = new VoucherAdapter(voucherList, null);
                     rvVouchers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
                     rvVouchers.setAdapter(voucherAdapter);
@@ -346,17 +350,11 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupSearch() {
+        // Chỉ click vào thanh tìm kiếm để mở SearchActivity
         etSearch.setOnClickListener(v -> {
             Intent intent = new Intent(getContext(), com.example.foodorder.SearchActivity.class);
             startActivity(intent);
         });
-
-        if (ivSearchIcon != null) {
-            ivSearchIcon.setOnClickListener(v -> {
-                Intent intent = new Intent(getContext(), com.example.foodorder.SearchActivity.class);
-                startActivity(intent);
-            });
-        }
 
         etSearch.setFocusable(false);
         etSearch.setFocusableInTouchMode(false);
@@ -364,26 +362,128 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupAddressClick() {
-        layoutAddress.setOnClickListener(v -> {
-            if (getContext() == null) return;
-            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-            builder.setTitle("Nhập địa chỉ giao hàng");
-            final EditText input = new EditText(getContext());
-            input.setHint("Ví dụ: Số 123, Đường ABC");
-            input.setText(currentAddress.equals("Chọn địa chỉ") ? "" : currentAddress);
-            builder.setView(input);
-            builder.setPositiveButton("Lưu", (dialog, which) -> {
-                String newAddress = input.getText().toString().trim();
-                if (!newAddress.isEmpty()) {
-                    sharedPreferences.edit().putString(KEY_ADDRESS, newAddress).apply();
-                    tvAddress.setText(newAddress);
-                    currentAddress = newAddress;
-                    Toast.makeText(getContext(), "Đã cập nhật địa chỉ", Toast.LENGTH_SHORT).show();
-                }
-            });
-            builder.setNegativeButton("Hủy", null);
-            builder.show();
+        layoutAddress.setOnClickListener(v -> showAddressDialog());
+    }
+
+    private void showAddressDialog() {
+        if (getContext() == null) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_address, null);
+
+        EditText etAddress = dialogView.findViewById(R.id.etAddress);
+        RecyclerView rvSuggestions = dialogView.findViewById(R.id.rvSuggestions);
+        Button btnSave = dialogView.findViewById(R.id.btnSave);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+
+        addressSuggestions.clear();
+        addressSuggestionAdapter = new AddressSuggestionAdapter(addressSuggestions, address -> {
+            etAddress.setText(address.getFullAddress());
+            rvSuggestions.setVisibility(View.GONE);
         });
+        rvSuggestions.setLayoutManager(new LinearLayoutManager(getContext()));
+        rvSuggestions.setAdapter(addressSuggestionAdapter);
+
+        etAddress.setText(currentAddress.equals("Chọn địa chỉ") ? "" : currentAddress);
+
+        etAddress.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String query = s.toString().trim();
+                if (query.length() > 2) {
+                    suggestAddresses(query);
+                } else {
+                    addressSuggestions.clear();
+                    addressSuggestionAdapter.updateList(addressSuggestions);
+                    rvSuggestions.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        AlertDialog dialog = builder.setView(dialogView).setTitle("Nhập địa chỉ giao hàng").create();
+        dialog.show();
+
+        btnSave.setOnClickListener(v -> {
+            String newAddress = etAddress.getText().toString().trim();
+            if (isValidAddress(newAddress)) {
+                saveAddress(newAddress);
+                dialog.dismiss();
+            } else {
+                Toast.makeText(getContext(), "Vui lòng nhập địa chỉ đầy đủ (Số nhà, Đường, Phường/Xã, Quận/Huyện, Thành phố)", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+    }
+
+    private void suggestAddresses(String query) {
+        addressSuggestions.clear();
+
+        if (query.toLowerCase().contains("giải phóng")) {
+            addressSuggestions.add(new AddressSuggestion(
+                    "Số 50, Đường Giải Phóng, Phương Liệt, Quận Thanh Xuân, Hà Nội",
+                    "50", "Đường Giải Phóng", "Phương Liệt", "Quận Thanh Xuân", "Hà Nội"
+            ));
+            addressSuggestions.add(new AddressSuggestion(
+                    "Số 123, Đường Giải Phóng, Đồng Tâm, Quận Hai Bà Trưng, Hà Nội",
+                    "123", "Đường Giải Phóng", "Đồng Tâm", "Quận Hai Bà Trưng", "Hà Nội"
+            ));
+        }
+
+        if (query.toLowerCase().contains("bạch mai")) {
+            addressSuggestions.add(new AddressSuggestion(
+                    "Số 156, Đường Bạch Mai, Phường Bạch Mai, Quận Hai Bà Trưng, Hà Nội",
+                    "156", "Đường Bạch Mai", "Phường Bạch Mai", "Quận Hai Bà Trưng", "Hà Nội"
+            ));
+        }
+
+        if (query.toLowerCase().contains("cầu giấy")) {
+            addressSuggestions.add(new AddressSuggestion(
+                    "Số 78, Đường Trần Duy Hưng, Trung Hòa, Quận Cầu Giấy, Hà Nội",
+                    "78", "Đường Trần Duy Hưng", "Trung Hòa", "Quận Cầu Giấy", "Hà Nội"
+            ));
+        }
+
+        if (query.toLowerCase().contains("hàng bông")) {
+            addressSuggestions.add(new AddressSuggestion(
+                    "Số 82, Phố Hàng Bông, Hàng Bông, Quận Hoàn Kiếm, Hà Nội",
+                    "82", "Phố Hàng Bông", "Hàng Bông", "Quận Hoàn Kiếm", "Hà Nội"
+            ));
+        }
+
+        addressSuggestionAdapter.updateList(addressSuggestions);
+        View rvSuggestionsView = getView().findViewById(R.id.rvSuggestions);
+        if (rvSuggestionsView != null) {
+            rvSuggestionsView.setVisibility(addressSuggestions.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private boolean isValidAddress(String address) {
+        if (address == null || address.isEmpty()) return false;
+
+        boolean hasNumber = address.matches(".*\\d+.*");
+        boolean hasStreet = address.contains("Đường") || address.contains("Phố") || address.contains("Ngõ") || address.contains("Hẻm");
+        boolean hasDistrict = address.contains("Quận") || address.contains("Huyện");
+        boolean hasCity = address.contains("Hà Nội") || address.contains("TP.HCM") || address.contains("Đà Nẵng") ||
+                address.contains("Hải Phòng") || address.contains("Cần Thơ");
+
+        return hasNumber && hasStreet && hasDistrict && hasCity;
+    }
+
+    private void saveAddress(String newAddress) {
+        SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+        prefs.edit().putString(KEY_ADDRESS, newAddress).apply();
+        prefs.edit().putString("user_address", newAddress).apply();
+        tvAddress.setText(newAddress);
+        currentAddress = newAddress;
+
+        Toast.makeText(getContext(), "Đã cập nhật địa chỉ: " + newAddress, Toast.LENGTH_SHORT).show();
     }
 
     private void setupAvatarClick() {

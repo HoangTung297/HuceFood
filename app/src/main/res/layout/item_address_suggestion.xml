@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="?attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/tvAddress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Số 123, Đường ABC, Phường XYZ"
+        android:textSize="14sp"
+        android:textColor="#333333" />
+
+    <TextView
+        android:id="@+id/tvShortAddress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Đường ABC, Quận XYZ"
+        android:textSize="12sp"
+        android:textColor="#757575"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>

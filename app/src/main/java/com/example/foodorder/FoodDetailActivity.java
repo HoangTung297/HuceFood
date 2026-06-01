@@ -1,6 +1,7 @@
 package com.example.foodorder;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -154,13 +155,21 @@ public class FoodDetailActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        // TỐI ƯU: Cập nhật UI ngay lập tức
         ivFavorite.setOnClickListener(v -> {
             if (isProcessing) return;
             isProcessing = true;
 
+            // Đảo trạng thái UI ngay lập tức
             if (isFavorite) {
+                // UI: chuyển sang trắng ngay
+                updateFavoriteIcon(false);
+                // Gọi API xóa
                 removeFromFavorites();
             } else {
+                // UI: chuyển sang đỏ ngay
+                updateFavoriteIcon(true);
+                // Gọi API thêm
                 addToFavorites();
             }
         });
@@ -226,7 +235,6 @@ public class FoodDetailActivity extends AppCompatActivity {
                 });
     }
 
-    // KIỂM TRA TRẠNG THÁI YÊU THÍCH VÀ CẬP NHẬT ICON
     private void checkIfFavorite() {
         if (userId.isEmpty() || currentFood == null) return;
 
@@ -250,7 +258,6 @@ public class FoodDetailActivity extends AppCompatActivity {
                 });
     }
 
-    // CẬP NHẬT ICON TIM
     private void updateFavoriteIcon(boolean isFav) {
         if (isFav) {
             ivFavorite.setImageResource(R.drawable.ic_favorite_filled);
@@ -261,10 +268,11 @@ public class FoodDetailActivity extends AppCompatActivity {
         }
     }
 
-    // THÊM VÀO YÊU THÍCH
+    // TỐI ƯU: Thêm nhanh, không cần check lại
     private void addToFavorites() {
         if (userId.isEmpty()) {
             Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            updateFavoriteIcon(false);
             isProcessing = false;
             return;
         }
@@ -284,32 +292,33 @@ public class FoodDetailActivity extends AppCompatActivity {
                 .addOnSuccessListener(doc -> {
                     isFavorite = true;
                     favoriteDocId = doc.getId();
-                    updateFavoriteIcon(true);
-                    Toast.makeText(this, "✅ Đã thêm vào yêu thích", Toast.LENGTH_SHORT).show();
                     isProcessing = false;
+                    // Không cần Toast nếu muốn nhanh hơn
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    // Nếu lỗi, hoàn tác UI
+                    updateFavoriteIcon(false);
+                    Toast.makeText(FoodDetailActivity.this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     isProcessing = false;
                 });
     }
 
-    // XÓA KHỎI YÊU THÍCH
     private void removeFromFavorites() {
         if (favoriteDocId != null) {
             db.collection("favorites").document(favoriteDocId).delete()
                     .addOnSuccessListener(aVoid -> {
                         isFavorite = false;
                         favoriteDocId = null;
-                        updateFavoriteIcon(false);
-                        Toast.makeText(this, "🗑️ Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
                         isProcessing = false;
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        // Nếu lỗi, hoàn tác UI
+                        updateFavoriteIcon(true);
+                        Toast.makeText(FoodDetailActivity.this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         isProcessing = false;
                     });
         } else {
+            // Fallback: tìm và xóa
             db.collection("favorites")
                     .whereEqualTo("userId", userId)
                     .whereEqualTo("foodId", currentFood.getId())
@@ -320,8 +329,6 @@ public class FoodDetailActivity extends AppCompatActivity {
                         }
                         isFavorite = false;
                         favoriteDocId = null;
-                        updateFavoriteIcon(false);
-                        Toast.makeText(this, "🗑️ Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
                         isProcessing = false;
                     });
         }

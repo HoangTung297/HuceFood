@@ -51,7 +51,7 @@ public class FavoriteFoodAdapter extends RecyclerView.Adapter<FavoriteFoodAdapte
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_favorite, parent, false);
+                .inflate(R.layout.item_favorite_food, parent, false);
         return new ViewHolder(view);
     }
 

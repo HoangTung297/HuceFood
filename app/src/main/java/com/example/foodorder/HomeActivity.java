@@ -9,7 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import com.example.foodorder.fragment.CartFragment;
-import com.example.foodorder.fragment.FavoriteFragment;
+import com.example.foodorder.fragment.FavoriteFragment;  // Import này
 import com.example.foodorder.fragment.HomeFragment;
 import com.example.foodorder.fragment.NotificationFragment;
 import com.example.foodorder.fragment.OrderFragment;
@@ -32,7 +32,6 @@ public class HomeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Kiểm tra trạng thái đăng nhập
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         boolean isLoggedIn = prefs.getBoolean("is_logged_in", false);
 
@@ -67,7 +66,7 @@ public class HomeActivity extends AppCompatActivity {
                     } else if (itemId == R.id.nav_notification) {
                         selectedFragment = new NotificationFragment();
                     } else if (itemId == R.id.nav_favorite) {
-                        selectedFragment = new FavoriteFragment();
+                        selectedFragment = new FavoriteFragment();  // Đã import đúng
                     } else if (itemId == R.id.nav_profile) {
                         selectedFragment = new ProfileFragment();
                     }

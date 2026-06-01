@@ -10,7 +10,6 @@ import com.example.foodorder.model.Voucher;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,115 +150,63 @@ public class FirebaseRepository {
 
     // ==================== ORDERS ====================
     public void createOrder(Order order, OnDataLoaded<String> callback) {
-        order.setCreatedAt(System.currentTimeMillis());
-        order.setStatus("pending");
-        order.setUpdatedAt(System.currentTimeMillis());
+        if (order.getCreatedAt() == 0) {
+            order.setCreatedAt(System.currentTimeMillis());
+        }
+        if (order.getUpdatedAt() == 0) {
+            order.setUpdatedAt(System.currentTimeMillis());
+        }
+
+        Log.d(TAG, "Creating order with status: " + order.getStatus());
 
         db.collection("orders").add(order)
                 .addOnSuccessListener(documentReference -> {
+                    Log.d(TAG, "Order created with ID: " + documentReference.getId());
                     order.setId(documentReference.getId());
                     callback.onSuccess(documentReference.getId());
                 })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error: " + e.getMessage());
+                    callback.onError(e.getMessage());
+                });
+    }
+
+    public void getOrdersByStatus(String userId, String status, OnDataLoaded<List<Order>> callback) {
+        Log.d(TAG, "Getting orders - userId: " + userId + ", status: " + status);
+
+        db.collection("orders")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("status", status)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Order> orders = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Order order = convertDocumentToOrder(doc);
+                        orders.add(order);
+                    }
+                    orders.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
+                    Log.d(TAG, "Found " + orders.size() + " orders with status: " + status);
+                    callback.onSuccess(orders);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error: " + e.getMessage());
+                    callback.onError(e.getMessage());
+                });
     }
 
     public void getUserOrders(String userId, OnDataLoaded<List<Order>> callback) {
         db.collection("orders")
                 .whereEqualTo("userId", userId)
-                .limit(100)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Order> orders = new ArrayList<>();
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Order order = new Order();
-                        order.setId(doc.getId());
-                        order.setUserId(doc.getString("userId"));
-                        order.setOrderCode(doc.getString("orderCode"));
-                        order.setRestaurantId(doc.getString("restaurantId"));
-                        order.setRestaurantName(doc.getString("restaurantName"));
-                        order.setItems((List<Map<String, Object>>) doc.get("items"));
-                        order.setSubtotal(getDouble(doc, "subtotal"));
-                        order.setDeliveryFee(getDouble(doc, "deliveryFee"));
-                        order.setDiscount(getDouble(doc, "discount"));
-                        order.setFinalTotal(getDouble(doc, "finalTotal"));
-                        order.setStatus(doc.getString("status"));
-                        order.setPaymentMethod(doc.getString("paymentMethod"));
-                        order.setPaymentStatus(doc.getString("paymentStatus"));
-                        order.setOrderNote(doc.getString("orderNote"));
-                        order.setVoucherCode(doc.getString("voucherCode"));
-                        order.setVoucherDiscount(getDouble(doc, "voucherDiscount"));
-                        order.setRating(getDouble(doc, "rating"));
-                        order.setReview(doc.getString("review"));
-                        order.setRated(doc.getBoolean("isRated") != null && doc.getBoolean("isRated"));
-                        order.setCreatedAt(getLong(doc, "createdAt"));
-                        order.setUpdatedAt(getLong(doc, "updatedAt"));
-                        order.setDeliveredAt(getLong(doc, "deliveredAt"));
-                        order.setCancelledAt(getLong(doc, "cancelledAt"));
-                        order.setRatedAt(getLong(doc, "ratedAt"));
+                        Order order = convertDocumentToOrder(doc);
                         orders.add(order);
                     }
-                    Collections.sort(orders, (a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
+                    orders.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
                     callback.onSuccess(orders);
                 })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    public void getOrdersByStatus(String userId, String status, OnDataLoaded<List<Order>> callback) {
-        db.collection("orders")
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("status", status)
-                .limit(100)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Order> orders = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Order order = new Order();
-                        order.setId(doc.getId());
-                        order.setUserId(doc.getString("userId"));
-                        order.setOrderCode(doc.getString("orderCode"));
-                        order.setRestaurantId(doc.getString("restaurantId"));
-                        order.setRestaurantName(doc.getString("restaurantName"));
-                        order.setItems((List<Map<String, Object>>) doc.get("items"));
-                        order.setSubtotal(getDouble(doc, "subtotal"));
-                        order.setDeliveryFee(getDouble(doc, "deliveryFee"));
-                        order.setDiscount(getDouble(doc, "discount"));
-                        order.setFinalTotal(getDouble(doc, "finalTotal"));
-                        order.setStatus(doc.getString("status"));
-                        order.setPaymentMethod(doc.getString("paymentMethod"));
-                        order.setPaymentStatus(doc.getString("paymentStatus"));
-                        order.setOrderNote(doc.getString("orderNote"));
-                        order.setVoucherCode(doc.getString("voucherCode"));
-                        order.setVoucherDiscount(getDouble(doc, "voucherDiscount"));
-                        order.setRating(getDouble(doc, "rating"));
-                        order.setReview(doc.getString("review"));
-                        order.setRated(doc.getBoolean("isRated") != null && doc.getBoolean("isRated"));
-                        order.setCreatedAt(getLong(doc, "createdAt"));
-                        order.setUpdatedAt(getLong(doc, "updatedAt"));
-                        order.setDeliveredAt(getLong(doc, "deliveredAt"));
-                        order.setCancelledAt(getLong(doc, "cancelledAt"));
-                        order.setRatedAt(getLong(doc, "ratedAt"));
-                        orders.add(order);
-                    }
-                    Collections.sort(orders, (a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
-                    callback.onSuccess(orders);
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    public void cancelOrder(String orderId, OnDataLoaded<Void> callback) {
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("status", "cancelled");
-        updates.put("cancelledAt", System.currentTimeMillis());
-        updates.put("updatedAt", System.currentTimeMillis());
-
-        db.collection("orders").document(orderId).update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    public void deleteOrder(String orderId, OnDataLoaded<Void> callback) {
-        db.collection("orders").document(orderId).delete()
-                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
                 .addOnFailureListener(e -> callback.onError(e.getMessage()));
     }
 
@@ -268,15 +215,31 @@ public class FirebaseRepository {
         updates.put("status", status);
         updates.put("updatedAt", System.currentTimeMillis());
 
-        if ("delivered".equals(status)) {
-            updates.put("deliveredAt", System.currentTimeMillis());
-        } else if ("cancelled".equals(status)) {
-            updates.put("cancelledAt", System.currentTimeMillis());
-        }
-
         db.collection("orders").document(orderId).update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Order status updated to: " + status);
+                    if (callback != null) callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error updating status: " + e.getMessage());
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
+    public void cancelOrder(String orderId, OnDataLoaded<Void> callback) {
+        updateOrderStatus(orderId, "cancelled", callback);
+    }
+
+    public void deleteOrder(String orderId, OnDataLoaded<Void> callback) {
+        db.collection("orders").document(orderId).delete()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Order deleted: " + orderId);
+                    if (callback != null) callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error deleting order: " + e.getMessage());
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
     public void updateOrderRating(String orderId, double rating, String review, OnDataLoaded<Void> callback) {
@@ -287,98 +250,40 @@ public class FirebaseRepository {
         updates.put("ratedAt", System.currentTimeMillis());
 
         db.collection("orders").document(orderId).update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Order rating updated for: " + orderId);
+                    if (callback != null) callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error updating rating: " + e.getMessage());
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
-    // ==================== RATINGS ====================
-    public void addRating(Rating rating, OnDataLoaded<Void> callback) {
-        rating.setCreatedAt(System.currentTimeMillis());
-        db.collection("ratings").add(rating)
-                .addOnSuccessListener(documentReference -> {
-                    rating.setId(documentReference.getId());
-                    callback.onSuccess(null);
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    public void getRatingsByOrder(String orderId, OnDataLoaded<List<Rating>> callback) {
-        db.collection("ratings")
-                .whereEqualTo("orderId", orderId)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Rating> ratings = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Rating rating = doc.toObject(Rating.class);
-                        rating.setId(doc.getId());
-                        ratings.add(rating);
-                    }
-                    callback.onSuccess(ratings);
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    // ==================== RESTAURANTS ====================
-    public void getAllRestaurants(OnDataLoaded<List<Restaurant>> callback) {
-        db.collection("restaurants").get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Restaurant> restaurants = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Restaurant restaurant = doc.toObject(Restaurant.class);
-                        restaurant.setId(doc.getId());
-                        restaurants.add(restaurant);
-                    }
-                    callback.onSuccess(restaurants);
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    public void getRestaurantById(String restaurantId, OnDataLoaded<Restaurant> callback) {
-        db.collection("restaurants").document(restaurantId).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        Restaurant restaurant = documentSnapshot.toObject(Restaurant.class);
-                        restaurant.setId(documentSnapshot.getId());
-                        callback.onSuccess(restaurant);
-                    } else {
-                        callback.onError("Restaurant not found");
-                    }
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    // ==================== VOUCHERS ====================
-    public void getAllVouchers(OnDataLoaded<List<Voucher>> callback) {
-        db.collection("vouchers")
-                .whereEqualTo("isActive", true)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Voucher> vouchers = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Voucher voucher = doc.toObject(Voucher.class);
-                        voucher.setId(doc.getId());
-                        vouchers.add(voucher);
-                    }
-                    callback.onSuccess(vouchers);
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
-    }
-
-    public void getVoucherByCode(String code, OnDataLoaded<Voucher> callback) {
-        db.collection("vouchers")
-                .whereEqualTo("code", code)
-                .whereEqualTo("isActive", true)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        Voucher voucher = queryDocumentSnapshots.getDocuments().get(0).toObject(Voucher.class);
-                        voucher.setId(queryDocumentSnapshots.getDocuments().get(0).getId());
-                        callback.onSuccess(voucher);
-                    } else {
-                        callback.onError("Voucher not found");
-                    }
-                })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    private Order convertDocumentToOrder(QueryDocumentSnapshot doc) {
+        Order order = new Order();
+        order.setId(doc.getId());
+        order.setUserId(doc.getString("userId"));
+        order.setOrderCode(doc.getString("orderCode"));
+        order.setRestaurantId(doc.getString("restaurantId"));
+        order.setRestaurantName(doc.getString("restaurantName"));
+        order.setItems((List<Map<String, Object>>) doc.get("items"));
+        order.setSubtotal(getDouble(doc, "subtotal"));
+        order.setDeliveryFee(getDouble(doc, "deliveryFee"));
+        order.setDiscount(getDouble(doc, "discount"));
+        order.setFinalTotal(getDouble(doc, "finalTotal"));
+        order.setStatus(doc.getString("status"));
+        order.setPaymentMethod(doc.getString("paymentMethod"));
+        order.setPaymentStatus(doc.getString("paymentStatus"));
+        order.setOrderNote(doc.getString("orderNote"));
+        order.setCreatedAt(getLong(doc, "createdAt"));
+        order.setUpdatedAt(getLong(doc, "updatedAt"));
+        order.setDeliveredAt(getLong(doc, "deliveredAt"));
+        order.setCancelledAt(getLong(doc, "cancelledAt"));
+        order.setDeliveryName(doc.getString("deliveryName"));
+        order.setDeliveryPhone(doc.getString("deliveryPhone"));
+        order.setDeliveryAddress(doc.getString("deliveryAddress"));
+        return order;
     }
 
     // ==================== HELPER METHODS ====================
@@ -400,24 +305,126 @@ public class FirebaseRepository {
         return 0;
     }
 
+    // ==================== RATINGS ====================
+    public void addRating(Rating rating, OnDataLoaded<Void> callback) {
+        rating.setCreatedAt(System.currentTimeMillis());
+        db.collection("ratings").add(rating)
+                .addOnSuccessListener(documentReference -> {
+                    rating.setId(documentReference.getId());
+                    if (callback != null) callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
+    public void getRatingsByOrder(String orderId, OnDataLoaded<List<Rating>> callback) {
+        db.collection("ratings")
+                .whereEqualTo("orderId", orderId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Rating> ratings = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Rating rating = doc.toObject(Rating.class);
+                        rating.setId(doc.getId());
+                        ratings.add(rating);
+                    }
+                    if (callback != null) callback.onSuccess(ratings);
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
+    // ==================== RESTAURANTS ====================
+    public void getAllRestaurants(OnDataLoaded<List<Restaurant>> callback) {
+        db.collection("restaurants").get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Restaurant> restaurants = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Restaurant restaurant = doc.toObject(Restaurant.class);
+                        restaurant.setId(doc.getId());
+                        restaurants.add(restaurant);
+                    }
+                    if (callback != null) callback.onSuccess(restaurants);
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
+    public void getRestaurantById(String restaurantId, OnDataLoaded<Restaurant> callback) {
+        db.collection("restaurants").document(restaurantId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Restaurant restaurant = documentSnapshot.toObject(Restaurant.class);
+                        restaurant.setId(documentSnapshot.getId());
+                        if (callback != null) callback.onSuccess(restaurant);
+                    } else {
+                        if (callback != null) callback.onError("Restaurant not found");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
+    // ==================== VOUCHERS ====================
+    public void getAllVouchers(OnDataLoaded<List<Voucher>> callback) {
+        db.collection("vouchers")
+                .whereEqualTo("isActive", true)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Voucher> vouchers = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Voucher voucher = doc.toObject(Voucher.class);
+                        voucher.setId(doc.getId());
+                        vouchers.add(voucher);
+                    }
+                    if (callback != null) callback.onSuccess(vouchers);
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
+    public void getVoucherByCode(String code, OnDataLoaded<Voucher> callback) {
+        db.collection("vouchers")
+                .whereEqualTo("code", code)
+                .whereEqualTo("isActive", true)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        Voucher voucher = queryDocumentSnapshots.getDocuments().get(0).toObject(Voucher.class);
+                        voucher.setId(queryDocumentSnapshots.getDocuments().get(0).getId());
+                        if (callback != null) callback.onSuccess(voucher);
+                    } else {
+                        if (callback != null) callback.onError("Voucher not found");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
+    }
+
     // ==================== WALLET ====================
     public void getWallet(String userId, OnDataLoaded<Wallet> callback) {
         db.collection("wallets").document(userId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         Wallet wallet = documentSnapshot.toObject(Wallet.class);
-                        callback.onSuccess(wallet);
+                        if (callback != null) callback.onSuccess(wallet);
                     } else {
-                        // Tạo ví mới với số dư 0
                         Wallet newWallet = new Wallet();
                         newWallet.setUserId(userId);
                         newWallet.setBalance(0);
-                        newWallet.setUpdatedAt(System.currentTimeMillis());
                         db.collection("wallets").document(userId).set(newWallet);
-                        callback.onSuccess(newWallet);
+                        if (callback != null) callback.onSuccess(newWallet);
                     }
                 })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
     public void updateWalletBalance(String userId, double newBalance, OnDataLoaded<Void> callback) {
@@ -426,15 +433,18 @@ public class FirebaseRepository {
         updates.put("updatedAt", System.currentTimeMillis());
 
         db.collection("wallets").document(userId).update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnSuccessListener(aVoid -> {
+                    if (callback != null) callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
     // ==================== BANK ACCOUNTS ====================
     public void getLinkedBankAccounts(String userId, OnDataLoaded<List<BankAccount>> callback) {
         db.collection("bankAccounts")
                 .whereEqualTo("userId", userId)
-                .whereEqualTo("isLinked", true)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<BankAccount> accounts = new ArrayList<>();
@@ -443,21 +453,31 @@ public class FirebaseRepository {
                         account.setId(doc.getId());
                         accounts.add(account);
                     }
-                    callback.onSuccess(accounts);
+                    if (callback != null) callback.onSuccess(accounts);
                 })
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
     public void addBankAccount(BankAccount account, OnDataLoaded<String> callback) {
         db.collection("bankAccounts").add(account)
-                .addOnSuccessListener(documentReference -> callback.onSuccess(documentReference.getId()))
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnSuccessListener(documentReference -> {
+                    if (callback != null) callback.onSuccess(documentReference.getId());
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
     public void deleteBankAccount(String accountId, OnDataLoaded<Void> callback) {
         db.collection("bankAccounts").document(accountId).delete()
-                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
-                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                .addOnSuccessListener(aVoid -> {
+                    if (callback != null) callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    if (callback != null) callback.onError(e.getMessage());
+                });
     }
 
     // ==================== INTERFACE ====================

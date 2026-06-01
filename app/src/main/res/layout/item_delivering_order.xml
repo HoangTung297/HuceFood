@@ -13,6 +13,7 @@
         android:orientation="vertical"
         android:padding="12dp">
 
+        <!-- Mã đơn và trạng thái -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -31,12 +32,14 @@
                 android:id="@+id/tvStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="⏳ Đang xử lý"
+                android:text="⏳ Chờ xác nhận"
                 android:textSize="12sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:textColor="#FF9800" />
 
         </LinearLayout>
 
+        <!-- Ngày đặt -->
         <TextView
             android:id="@+id/tvOrderDate"
             android:layout_width="wrap_content"
@@ -46,23 +49,26 @@
             android:textColor="#757575"
             android:layout_marginTop="4dp" />
 
+        <!-- Tên nhà hàng -->
         <TextView
             android:id="@+id/tvRestaurantName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="KFC"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginTop="8dp" />
 
+        <!-- Danh sách món -->
         <TextView
             android:id="@+id/tvFoodItems"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="• Gà rán x2\n• Khoai tây x1"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:layout_marginTop="4dp" />
 
+        <!-- Tổng tiền -->
         <TextView
             android:id="@+id/tvTotalPrice"
             android:layout_width="wrap_content"
@@ -73,6 +79,7 @@
             android:textStyle="bold"
             android:layout_marginTop="8dp" />
 
+        <!-- 2 Nút: HỦY ĐƠN và ĐÃ NHẬN HÀNG -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -84,19 +91,24 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:text="Hủy đơn"
+                android:text="HỦY ĐƠN"
                 android:backgroundTint="#F44336"
                 android:textColor="@android:color/white"
-                android:layout_marginEnd="8dp" />
+                android:textSize="12sp"
+                android:layout_marginEnd="8dp"
+                app:cornerRadius="8dp" />
 
             <Button
                 android:id="@+id/btnReceived"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:text="Đã nhận hàng"
+                android:text="ĐÃ NHẬN HÀNG"
                 android:backgroundTint="#4CAF50"
-                android:textColor="@android:color/white" />
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:layout_marginStart="8dp"
+                app:cornerRadius="8dp" />
 
         </LinearLayout>
 

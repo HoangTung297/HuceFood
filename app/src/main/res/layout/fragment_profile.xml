@@ -266,6 +266,19 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Nút Ví của tôi -->
+        <Button
+            android:id="@+id/btnWallet"
+            style="?attr/borderlessButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="💰 Ví của tôi"
+            android:textSize="14sp"
+            android:gravity="center_vertical|start"
+            android:paddingStart="16dp"
+            android:background="?attr/selectableItemBackground"
+            android:layout_marginBottom="8dp" />
+
         <!-- Menu chức năng -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"

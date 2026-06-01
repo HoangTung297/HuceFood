@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.example.foodorder.model.Wallet;
+import com.example.foodorder.model.BankAccount;
 
 public class FirebaseRepository {
     private static FirebaseRepository instance;
@@ -398,7 +400,65 @@ public class FirebaseRepository {
         return 0;
     }
 
+    // ==================== WALLET ====================
+    public void getWallet(String userId, OnDataLoaded<Wallet> callback) {
+        db.collection("wallets").document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Wallet wallet = documentSnapshot.toObject(Wallet.class);
+                        callback.onSuccess(wallet);
+                    } else {
+                        // Tạo ví mới với số dư 0
+                        Wallet newWallet = new Wallet();
+                        newWallet.setUserId(userId);
+                        newWallet.setBalance(0);
+                        newWallet.setUpdatedAt(System.currentTimeMillis());
+                        db.collection("wallets").document(userId).set(newWallet);
+                        callback.onSuccess(newWallet);
+                    }
+                })
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
 
+    public void updateWalletBalance(String userId, double newBalance, OnDataLoaded<Void> callback) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("balance", newBalance);
+        updates.put("updatedAt", System.currentTimeMillis());
+
+        db.collection("wallets").document(userId).update(updates)
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    // ==================== BANK ACCOUNTS ====================
+    public void getLinkedBankAccounts(String userId, OnDataLoaded<List<BankAccount>> callback) {
+        db.collection("bankAccounts")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isLinked", true)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<BankAccount> accounts = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        BankAccount account = doc.toObject(BankAccount.class);
+                        account.setId(doc.getId());
+                        accounts.add(account);
+                    }
+                    callback.onSuccess(accounts);
+                })
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    public void addBankAccount(BankAccount account, OnDataLoaded<String> callback) {
+        db.collection("bankAccounts").add(account)
+                .addOnSuccessListener(documentReference -> callback.onSuccess(documentReference.getId()))
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    public void deleteBankAccount(String accountId, OnDataLoaded<Void> callback) {
+        db.collection("bankAccounts").document(accountId).delete()
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
 
     // ==================== INTERFACE ====================
     public interface OnDataLoaded<T> {

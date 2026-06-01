@@ -23,12 +23,13 @@ import com.example.foodorder.OrderHistoryActivity;
 import com.example.foodorder.R;
 import com.example.foodorder.utils.CacheManager;
 import com.google.firebase.auth.FirebaseAuth;
+import com.example.foodorder.WalletActivity;
 
 public class ProfileFragment extends Fragment {
 
     private TextView tvUsername, tvEmail, tvPhone, tvAddress;
     private EditText etUsername, etEmail, etPhone, etAddress;
-    private Button btnCart, btnOrderHistory, btnEditProfile, btnLogout;
+    private Button btnCart, btnOrderHistory, btnEditProfile, btnLogout, btnWallet;
     private Button btnSaveProfile, btnCancelEdit;
     private View layoutSaveCancel;
 
@@ -60,6 +61,7 @@ public class ProfileFragment extends Fragment {
         btnOrderHistory = view.findViewById(R.id.btnOrderHistory);
         btnEditProfile = view.findViewById(R.id.btnEditProfile);
         btnLogout = view.findViewById(R.id.btnLogout);
+        btnWallet = view.findViewById(R.id.btnWallet);
         btnSaveProfile = view.findViewById(R.id.btnSaveProfile);
         btnCancelEdit = view.findViewById(R.id.btnCancelEdit);
 
@@ -93,6 +95,11 @@ public class ProfileFragment extends Fragment {
         btnCart.setOnClickListener(v -> {
             Toast.makeText(getContext(), "Đã bấm giỏ hàng", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(getActivity(), CartActivity.class);
+            startActivity(intent);
+        });
+
+        btnWallet.setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), WalletActivity.class);
             startActivity(intent);
         });
 

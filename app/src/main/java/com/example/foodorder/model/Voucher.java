@@ -1,6 +1,10 @@
 package com.example.foodorder.model;
 
-public class Voucher {
+import java.io.Serializable;
+
+public class Voucher implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String id;
     private String code;
     private String title;
@@ -9,7 +13,7 @@ public class Voucher {
     private String discountType; // fixed, percent, freeship
     private double discountValue;
     private double minOrder;
-    private double minFoodPrice; // Giá tối thiểu mỗi món để áp dụng
+    private double minFoodPrice;
     private boolean isActive;
     private boolean isGlobal;
     private boolean isUsed;
@@ -21,7 +25,6 @@ public class Voucher {
 
     public Voucher() {}
 
-    // Getters
     public String getId() { return id; }
     public String getCode() { return code; }
     public String getTitle() { return title; }
@@ -41,7 +44,6 @@ public class Voucher {
     public int getUsedCount() { return usedCount; }
     public String getUserId() { return userId; }
 
-    // Setters
     public void setId(String id) { this.id = id; }
     public void setCode(String code) { this.code = code; }
     public void setTitle(String title) { this.title = title; }

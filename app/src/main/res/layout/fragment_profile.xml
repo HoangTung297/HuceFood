@@ -31,7 +31,6 @@
                 android:text="👤"
                 android:textSize="48sp"
                 android:gravity="center" />
-
         </FrameLayout>
 
         <!-- Thông tin user -->
@@ -48,20 +47,38 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- Tiêu đề + nút Sửa -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📋 THÔNG TIN CÁ NHÂN"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#333333"
-                    android:layout_marginBottom="12dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📋 THÔNG TIN CÁ NHÂN"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#333333" />
+
+                    <Button
+                        android:id="@+id/btnEditProfile"
+                        style="?attr/borderlessButtonStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✏️ Sửa"
+                        android:textColor="#FF5722" />
+                </LinearLayout>
 
                 <!-- Họ tên -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_marginBottom="12dp">
 
                     <TextView
@@ -71,15 +88,28 @@
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
-                    <TextView
-                        android:id="@+id/tvUsername"
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="User"
-                        android:textSize="14sp"
-                        android:textColor="#333333" />
+                        android:layout_weight="1">
 
+                        <TextView
+                            android:id="@+id/tvUsername"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="User"
+                            android:textSize="14sp"
+                            android:textColor="#333333" />
+
+                        <EditText
+                            android:id="@+id/etUsername"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="14sp"
+                            android:padding="4dp"
+                            android:background="@android:drawable/edit_text"
+                            android:visibility="gone" />
+                    </FrameLayout>
                 </LinearLayout>
 
                 <!-- Email -->
@@ -87,6 +117,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_marginBottom="12dp">
 
                     <TextView
@@ -96,15 +127,29 @@
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
-                    <TextView
-                        android:id="@+id/tvEmail"
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="user@example.com"
-                        android:textSize="14sp"
-                        android:textColor="#333333" />
+                        android:layout_weight="1">
 
+                        <TextView
+                            android:id="@+id/tvEmail"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="user@example.com"
+                            android:textSize="14sp"
+                            android:textColor="#333333" />
+
+                        <EditText
+                            android:id="@+id/etEmail"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="14sp"
+                            android:inputType="textEmailAddress"
+                            android:padding="4dp"
+                            android:background="@android:drawable/edit_text"
+                            android:visibility="gone" />
+                    </FrameLayout>
                 </LinearLayout>
 
                 <!-- Số điện thoại -->
@@ -112,6 +157,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_marginBottom="12dp">
 
                     <TextView
@@ -121,43 +167,103 @@
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
-                    <TextView
-                        android:id="@+id/tvPhone"
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Chưa cập nhật"
-                        android:textSize="14sp"
-                        android:textColor="#333333" />
+                        android:layout_weight="1">
 
+                        <TextView
+                            android:id="@+id/tvPhone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Chưa cập nhật"
+                            android:textSize="14sp"
+                            android:textColor="#333333" />
+
+                        <EditText
+                            android:id="@+id/etPhone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="14sp"
+                            android:inputType="phone"
+                            android:padding="4dp"
+                            android:background="@android:drawable/edit_text"
+                            android:visibility="gone" />
+                    </FrameLayout>
                 </LinearLayout>
 
                 <!-- Địa chỉ -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:gravity="top">
 
                     <TextView
                         android:layout_width="100dp"
                         android:layout_height="wrap_content"
                         android:text="📍 Địa chỉ:"
                         android:textSize="14sp"
-                        android:textColor="#757575" />
+                        android:textColor="#757575"
+                        android:layout_marginTop="4dp" />
 
-                    <TextView
-                        android:id="@+id/tvAddress"
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1">
+
+                        <TextView
+                            android:id="@+id/tvAddress"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Chưa cập nhật"
+                            android:textSize="14sp"
+                            android:textColor="#333333" />
+
+                        <EditText
+                            android:id="@+id/etAddress"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="14sp"
+                            android:minLines="2"
+                            android:gravity="top"
+                            android:inputType="textMultiLine"
+                            android:padding="4dp"
+                            android:background="@android:drawable/edit_text"
+                            android:visibility="gone" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <!-- Nút Lưu / Hủy khi đang chỉnh sửa -->
+                <LinearLayout
+                    android:id="@+id/layoutSaveCancel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone">
+
+                    <Button
+                        android:id="@+id/btnCancelEdit"
+                        style="?attr/borderlessButtonStyle"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Chưa cập nhật"
-                        android:textSize="14sp"
-                        android:textColor="#333333" />
+                        android:text="Hủy"
+                        android:textColor="#757575" />
 
+                    <Button
+                        android:id="@+id/btnSaveProfile"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Lưu"
+                        android:textColor="#FFFFFF"
+                        android:backgroundTint="#FF5722"
+                        app:cornerRadius="8dp" />
                 </LinearLayout>
 
             </LinearLayout>
-
         </androidx.cardview.widget.CardView>
 
         <!-- Menu chức năng -->
@@ -173,7 +279,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- Nút giỏ hàng -->
                 <Button
                     android:id="@+id/btnCart"
                     style="?attr/borderlessButtonStyle"
@@ -190,7 +295,6 @@
                     android:layout_height="1dp"
                     android:background="#E0E0E0" />
 
-                <!-- Nút lịch sử đơn hàng -->
                 <Button
                     android:id="@+id/btnOrderHistory"
                     style="?attr/borderlessButtonStyle"
@@ -202,26 +306,7 @@
                     android:paddingStart="16dp"
                     android:background="?attr/selectableItemBackground" />
 
-<<<<<<< Updated upstream
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#E0E0E0" />
-
-                <!-- Nút xóa giỏ hàng -->
-                <Button
-                    android:id="@+id/btnClearCart"
-                    style="?attr/borderlessButtonStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="🗑️ Xóa giỏ hàng"
-                    android:textSize="14sp"
-                    android:gravity="center_vertical|start"
-                    android:paddingStart="16dp"
-                    android:background="?attr/selectableItemBackground" />
-
             </LinearLayout>
-
         </androidx.cardview.widget.CardView>
 
         <!-- Nút đăng xuất -->
@@ -229,30 +314,12 @@
             android:id="@+id/btnLogout"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="ĐĂNG XUẤT"
+            android:text="🚪 ĐĂNG XUẤT"
             android:textSize="14sp"
             android:textStyle="bold"
             android:backgroundTint="#F44336"
             android:textColor="@android:color/white"
             app:cornerRadius="8dp" />
-=======
-        <!-- Nút sửa thông tin -->
-        <Button
-            android:id="@+id/btnEditProfile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="✏️ Sửa thông tin"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Nút Đăng xuất -->
-        <Button
-            android:id="@+id/btnLogout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@android:color/holo_red_dark"
-            android:text="🚪 Đăng xuất" />
->>>>>>> Stashed changes
 
     </LinearLayout>
-
 </ScrollView>

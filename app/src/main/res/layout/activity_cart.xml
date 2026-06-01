@@ -40,7 +40,6 @@
         android:padding="16dp"
         android:background="@android:color/white">
 
-        <!-- Tổng tiền tạm tính -->
         <TextView
             android:id="@+id/tvTotalPrice"
             android:layout_width="wrap_content"
@@ -51,7 +50,6 @@
             android:textColor="@color/primary_color"
             android:layout_marginBottom="8dp"/>
 
-        <!-- Phí giao hàng -->
         <TextView
             android:id="@+id/tvDeliveryFee"
             android:layout_width="wrap_content"
@@ -61,7 +59,6 @@
             android:textColor="@android:color/darker_gray"
             android:layout_marginBottom="4dp"/>
 
-        <!-- Giảm giá voucher -->
         <TextView
             android:id="@+id/tvVoucherDiscount"
             android:layout_width="wrap_content"
@@ -71,7 +68,6 @@
             android:textColor="#4CAF50"
             android:layout_marginBottom="8dp"/>
 
-        <!-- Thành tiền cuối cùng -->
         <TextView
             android:id="@+id/tvFinalTotal"
             android:layout_width="wrap_content"
@@ -82,7 +78,15 @@
             android:textColor="#FF5722"
             android:layout_marginBottom="16dp"/>
 
-        <!-- Nút chọn voucher -->
+        <TextView
+            android:id="@+id/tvAppliedVoucher"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="13sp"
+            android:textColor="#4CAF50"
+            android:layout_marginBottom="8dp"/>
+
         <Button
             android:id="@+id/btnSelectVoucher"
             android:layout_width="match_parent"

@@ -1,342 +1,183 @@
 package com.example.foodorder.fragment;
 
-import android.app.AlertDialog;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.foodorder.R;
+import com.example.foodorder.adapter.FoodAdapter;
+import com.example.foodorder.model.CartItem;
+import com.example.foodorder.model.Food;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
-import com.google.firebase.firestore.FirebaseFirestore;
-import java.text.SimpleDateFormat;
+
+import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class DeliveringFragment extends Fragment {
 
-    private RecyclerView rvOrders;
+    private View cardOrder;
+    private TextView tvOrderId, tvRestaurantName, tvFoodItems, tvTotalPrice;
+    private Button btnTrack;
     private LinearLayout layoutEmpty;
-    private ProgressBar progressBar;
-    private DeliveringAdapter adapter;
-    private List<Order> orderList;
-    private FirebaseRepository repository;
-    private FirebaseFirestore db;
-    private String userId = "user123";
-    private boolean isLoading = false;
+    private RecyclerView rvSuggestions;
 
+    private String userId;
+    private FirebaseRepository repository;
+    private FoodAdapter foodAdapter;
+    private List<Food> suggestionList = new ArrayList<>();
+
+    public DeliveringFragment() {
+        // Required empty public constructor
+    }
+
+    @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_order_list, container, false);
-        rvOrders = view.findViewById(R.id.rvOrders);
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_delivering, container, false);
+
+        // Ánh xạ view
+        cardOrder = view.findViewById(R.id.cardOrder);
+        tvOrderId = view.findViewById(R.id.tvOrderId);
+        tvRestaurantName = view.findViewById(R.id.tvRestaurantName);
+        tvFoodItems = view.findViewById(R.id.tvFoodItems);
+        tvTotalPrice = view.findViewById(R.id.tvTotalPrice);
+        btnTrack = view.findViewById(R.id.btnTrack);
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
-        progressBar = view.findViewById(R.id.progressBar);
+        rvSuggestions = view.findViewById(R.id.rvSuggestions);
+
+        // Lấy userId
+        SharedPreferences prefs = requireActivity().getSharedPreferences("UserPrefs", requireActivity().MODE_PRIVATE);
+        userId = prefs.getString("user_id", "user123");
 
         repository = FirebaseRepository.getInstance();
-        db = FirebaseFirestore.getInstance();
-        orderList = new ArrayList<>();
 
-        if (getActivity() != null) {
-            userId = getActivity().getSharedPreferences("UserPrefs", 0)
-                    .getString("user_id", "user123");
-        }
+        // Setup gợi ý món ăn
+        foodAdapter = new FoodAdapter(suggestionList,
+                food -> {
+                    Toast.makeText(requireContext(), "Xem chi tiết: " + food.getName(), Toast.LENGTH_SHORT).show();
+                },
+                food -> {
+                    addToCart(food);
+                }
+        );
+        rvSuggestions.setLayoutManager(new LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false));
+        rvSuggestions.setAdapter(foodAdapter);
 
-        setupRecyclerView();
-        loadOrders();
+        // Tải dữ liệu lần đầu
+        refreshData();
+
+        // Nút theo dõi
+        btnTrack.setOnClickListener(v -> {
+            Toast.makeText(requireContext(), "Chức năng theo dõi đơn hàng đang phát triển", Toast.LENGTH_SHORT).show();
+        });
+
         return view;
     }
 
-    private void setupRecyclerView() {
-        adapter = new DeliveringAdapter(orderList,
-                order -> showOrderDetail(order),
-                (order, position) -> showCancelConfirmDialog(order, position),
-                (order, position) -> confirmReceivedOrder(order, position)
-        );
-        rvOrders.setLayoutManager(new LinearLayoutManager(getContext()));
-        rvOrders.setAdapter(adapter);
+    /**
+     * Phương thức public để OrderFragment gọi refresh lại dữ liệu.
+     */
+    public void refreshData() {
+        checkDeliveringOrder();
+        loadSuggestions();
     }
 
-    private void showCancelConfirmDialog(Order order, int position) {
-        new AlertDialog.Builder(getContext())
-                .setTitle("Xác nhận hủy đơn")
-                .setMessage("Bạn có chắc muốn hủy đơn hàng " + order.getOrderCode() + " không?")
-                .setPositiveButton("Hủy đơn", (dialog, which) -> cancelOrder(order, position))
-                .setNegativeButton("Quay lại", null)
-                .show();
-    }
-
-    private void confirmReceivedOrder(Order order, int position) {
-        new AlertDialog.Builder(getContext())
-                .setTitle("Xác nhận đã nhận hàng")
-                .setMessage("Bạn đã nhận được đơn hàng " + order.getOrderCode() + " chưa?")
-                .setPositiveButton("Đã nhận", (dialog, which) -> {
-                    updateOrderStatus(order, "delivered", position);
-                    createDeliveryNotification(order);
-                })
-                .setNegativeButton("Chưa", null)
-                .show();
-    }
-
-    // THÊM METHOD NÀY - TẠO THÔNG BÁO KHI NHẬN HÀNG
-    private void createDeliveryNotification(Order order) {
-        if (getContext() == null) return;
-
-        java.util.HashMap<String, Object> notification = new java.util.HashMap<>();
-        notification.put("userId", userId);
-        notification.put("title", "✅ Đã nhận hàng thành công");
-        notification.put("message", "Đơn hàng #" + order.getOrderCode() + " đã được giao thành công. Cảm ơn bạn đã sử dụng dịch vụ! Hãy đánh giá chất lượng nhà hàng nhé.");
-        notification.put("type", "order");
-        notification.put("createdAt", System.currentTimeMillis());
-        notification.put("isRead", false);
-        notification.put("orderId", order.getOrderCode());
-
-        db.collection("notifications").add(notification)
-                .addOnSuccessListener(docRef -> refreshOtherFragments())
-                .addOnFailureListener(e -> {});
-    }
-
-    private void cancelOrder(Order order, int position) {
-        progressBar.setVisibility(View.VISIBLE);
-        repository.cancelOrder(order.getId(), new FirebaseRepository.OnDataLoaded<Void>() {
+    private void checkDeliveringOrder() {
+        repository.getOrdersByStatus(userId, "delivering", new FirebaseRepository.OnDataLoaded<List<Order>>() {
             @Override
-            public void onSuccess(Void data) {
-                orderList.remove(position);
-                adapter.updateList(orderList);
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(getContext(), "Đã hủy đơn hàng " + order.getOrderCode(), Toast.LENGTH_SHORT).show();
-
-                if (orderList.isEmpty()) {
-                    rvOrders.setVisibility(View.GONE);
+            public void onSuccess(List<Order> data) {
+                if (data != null && !data.isEmpty()) {
+                    showOrderCard(data.get(0));
+                } else {
+                    cardOrder.setVisibility(View.GONE);
                     layoutEmpty.setVisibility(View.VISIBLE);
                 }
-
-                refreshOtherFragments();
             }
+
             @Override
             public void onError(String error) {
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Lỗi tải đơn hàng: " + error, Toast.LENGTH_SHORT).show();
+                cardOrder.setVisibility(View.GONE);
+                layoutEmpty.setVisibility(View.VISIBLE);
             }
         });
     }
 
-    private void updateOrderStatus(Order order, String status, int position) {
-        progressBar.setVisibility(View.VISIBLE);
-        repository.updateOrderStatus(order.getId(), status, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                orderList.remove(position);
-                adapter.updateList(orderList);
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(getContext(), "Đã cập nhật trạng thái đơn hàng", Toast.LENGTH_SHORT).show();
+    private void showOrderCard(Order order) {
+        cardOrder.setVisibility(View.VISIBLE);
+        layoutEmpty.setVisibility(View.GONE);
 
-                if (orderList.isEmpty()) {
-                    rvOrders.setVisibility(View.GONE);
-                    layoutEmpty.setVisibility(View.VISIBLE);
-                }
-
-                refreshOtherFragments();
-            }
-            @Override
-            public void onError(String error) {
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void showOrderDetail(Order order) {
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
-
-        TextView tvOrderId = dialogView.findViewById(R.id.tvOrderId);
-        TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
-        TextView tvOrderDate = dialogView.findViewById(R.id.tvOrderDate);
-        TextView tvPaymentMethod = dialogView.findViewById(R.id.tvPaymentMethod);
-        TextView tvItems = dialogView.findViewById(R.id.tvItems);
-        TextView tvOrderNote = dialogView.findViewById(R.id.tvOrderNote);
-        TextView tvTotalPrice = dialogView.findViewById(R.id.tvTotalPrice);
-        TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
-        Button btnClose = dialogView.findViewById(R.id.btnClose);
-
-        tvOrderId.setText(order.getOrderCode());
-        tvRestaurantName.setText(order.getRestaurantName());
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-        tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
-        tvPaymentMethod.setText(order.getPaymentMethod().equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo");
-        tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
-        tvStatus.setText(order.getStatusText());
+        tvOrderId.setText("Mã đơn: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
+        tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Đang cập nhật");
 
         StringBuilder itemsText = new StringBuilder();
         if (order.getItems() != null) {
-            for (Map<String, Object> item : order.getItems()) {
+            for (java.util.Map<String, Object> item : order.getItems()) {
                 String name = (String) item.get("name");
                 long quantity = ((Number) item.get("quantity")).longValue();
-                itemsText.append("• ").append(name).append(" x").append(quantity);
-                String note = (String) item.get("note");
-                if (note != null && !note.isEmpty()) {
-                    itemsText.append("\n  📝 ").append(note);
-                }
-                itemsText.append("\n");
+                itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
             }
         }
-        tvItems.setText(itemsText.toString());
+        tvFoodItems.setText(itemsText.toString());
 
-        String orderNote = order.getOrderNote();
-        if (orderNote != null && !orderNote.isEmpty()) {
-            tvOrderNote.setText(orderNote);
-        } else {
-            tvOrderNote.setText("Không có ghi chú");
-        }
-
-        AlertDialog dialog = new AlertDialog.Builder(getContext())
-                .setView(dialogView)
-                .setCancelable(true)
-                .create();
-        dialog.show();
-
-        btnClose.setOnClickListener(v -> dialog.dismiss());
+        NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+        tvTotalPrice.setText(formatter.format(order.getFinalTotal()) + "đ");
     }
 
-    private void refreshOtherFragments() {
-        if (getParentFragment() instanceof OrderFragment) {
-            OrderFragment orderFragment = (OrderFragment) getParentFragment();
-            orderFragment.refreshAllTabs();
-        }
+    private void loadSuggestions() {
+        // TODO: Thay bằng dữ liệu thực từ Firebase
+        suggestionList.clear();
+
+        Food f1 = new Food();
+        f1.setId("1");
+        f1.setName("Gà rán giòn");
+        f1.setPrice(50000);
+        f1.setImageUrl("");
+        suggestionList.add(f1);
+
+        Food f2 = new Food();
+        f2.setId("2");
+        f2.setName("Trà sữa trân châu");
+        f2.setPrice(35000);
+        suggestionList.add(f2);
+
+        foodAdapter.notifyDataSetChanged();
     }
 
-    private void loadOrders() {
-        if (isLoading) return;
-        isLoading = true;
-        progressBar.setVisibility(View.VISIBLE);
+    private void addToCart(Food food) {
+        CartItem item = new CartItem();
+        item.setFoodId(food.getId());
+        item.setName(food.getName());
+        item.setPrice(food.getPrice());
+        item.setQuantity(1);
+        item.setImageUrl(food.getImageUrl());
 
-        List<String> statusList = Arrays.asList("pending", "preparing", "shipping");
-        repository.getUserOrders(userId, new FirebaseRepository.OnDataLoaded<List<Order>>() {
+        repository.addToCart(userId, item, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
-            public void onSuccess(List<Order> data) {
-                orderList.clear();
-                for (Order order : data) {
-                    if (statusList.contains(order.getStatus())) {
-                        orderList.add(order);
-                    }
-                }
-
-                if (orderList.isEmpty()) {
-                    rvOrders.setVisibility(View.GONE);
-                    layoutEmpty.setVisibility(View.VISIBLE);
-                } else {
-                    rvOrders.setVisibility(View.VISIBLE);
-                    layoutEmpty.setVisibility(View.GONE);
-                    adapter.updateList(orderList);
-                }
-                progressBar.setVisibility(View.GONE);
-                isLoading = false;
+            public void onSuccess(Void data) {
+                Toast.makeText(requireContext(), "Đã thêm " + food.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
             }
+
             @Override
             public void onError(String error) {
-                Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                progressBar.setVisibility(View.GONE);
-                isLoading = false;
+                Toast.makeText(requireContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    public void refreshData() {
-        loadOrders();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        loadOrders();
-    }
-
-    // ==================== ADAPTER INNER CLASS ====================
-    static class DeliveringAdapter extends RecyclerView.Adapter<DeliveringAdapter.ViewHolder> {
-        private List<Order> orders;
-        private OnItemClickListener listener;
-        private OnCancelClickListener cancelListener;
-        private OnReceivedClickListener receivedListener;
-
-        interface OnItemClickListener { void onItemClick(Order order); }
-        interface OnCancelClickListener { void onCancelClick(Order order, int position); }
-        interface OnReceivedClickListener { void onReceivedClick(Order order, int position); }
-
-        DeliveringAdapter(List<Order> orders, OnItemClickListener listener,
-                          OnCancelClickListener cancelListener, OnReceivedClickListener receivedListener) {
-            this.orders = orders;
-            this.listener = listener;
-            this.cancelListener = cancelListener;
-            this.receivedListener = receivedListener;
-        }
-
-        @NonNull @Override
-        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new ViewHolder(LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_delivering_order, parent, false));
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            holder.bind(orders.get(position), listener, cancelListener, receivedListener, position);
-        }
-
-        @Override public int getItemCount() { return orders.size(); }
-
-        void updateList(List<Order> newList) {
-            this.orders = newList;
-            notifyDataSetChanged();
-        }
-
-        static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvOrderId, tvOrderDate, tvRestaurantName, tvFoodItems, tvTotalPrice, tvStatus;
-            Button btnCancel, btnReceived;
-
-            ViewHolder(@NonNull View v) {
-                super(v);
-                tvOrderId = v.findViewById(R.id.tvOrderId);
-                tvOrderDate = v.findViewById(R.id.tvOrderDate);
-                tvRestaurantName = v.findViewById(R.id.tvRestaurantName);
-                tvFoodItems = v.findViewById(R.id.tvFoodItems);
-                tvTotalPrice = v.findViewById(R.id.tvTotalPrice);
-                tvStatus = v.findViewById(R.id.tvStatus);
-                btnCancel = v.findViewById(R.id.btnCancel);
-                btnReceived = v.findViewById(R.id.btnReceived);
-            }
-
-            void bind(Order order, OnItemClickListener listener, OnCancelClickListener cancelListener,
-                      OnReceivedClickListener receivedListener, int position) {
-                tvOrderId.setText("Mã: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
-                tvOrderDate.setText(new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                        .format(new java.util.Date(order.getCreatedAt())));
-                tvRestaurantName.setText(order.getRestaurantName());
-
-                StringBuilder sb = new StringBuilder();
-                if (order.getItems() != null) {
-                    for (Map<String, Object> item : order.getItems()) {
-                        sb.append("• ").append(item.get("name")).append(" x").append(item.get("quantity")).append("\n");
-                    }
-                }
-                tvFoodItems.setText(sb.toString());
-                tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
-                tvStatus.setText(order.getStatusText());
-
-                btnCancel.setOnClickListener(v -> cancelListener.onCancelClick(order, position));
-                btnReceived.setOnClickListener(v -> receivedListener.onReceivedClick(order, position));
-                itemView.setOnClickListener(v -> listener.onItemClick(order));
-            }
-        }
     }
 }

@@ -24,7 +24,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Chưa có món yêu thích"
+            android:text="Chưa có nhà hàng yêu thích"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="#333333" />
@@ -33,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Hãy thêm món ăn bạn yêu thích nào!"
+            android:text="Hãy thêm nhà hàng bạn yêu thích nào!"
             android:textSize="14sp"
             android:textColor="#757575" />
 

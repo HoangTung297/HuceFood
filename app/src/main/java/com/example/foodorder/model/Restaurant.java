@@ -11,6 +11,8 @@ public class Restaurant implements Serializable {
     private String deliveryTime;
     private String discount;
     private String imageUrl;
+    private boolean isFavorite;
+    private String favoriteId;
 
     public Restaurant() {}
 
@@ -45,4 +47,9 @@ public class Restaurant implements Serializable {
     public void setDeliveryTime(String deliveryTime) { this.deliveryTime = deliveryTime; }
     public void setDiscount(String discount) { this.discount = discount; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public boolean isFavorite() { return isFavorite; }
+    public void setFavorite(boolean favorite) { isFavorite = favorite; }
+    public String getFavoriteId() { return favoriteId; }
+    public void setFavoriteId(String favoriteId) { this.favoriteId = favoriteId; }
 }

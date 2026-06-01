@@ -15,7 +15,6 @@
         app:title="Chi tiết nhà hàng"
         app:titleTextColor="@android:color/white" />
 
-    <!-- QUAN TRỌNG: Dùng NestedScrollView thay vì ScrollView -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -37,6 +36,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop" />
+
+                <!-- Nút yêu thích -->
+                <ImageButton
+                    android:id="@+id/ivFavorite"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_margin="16dp"
+                    android:layout_gravity="end|top"
+                    android:src="@drawable/ic_favorite"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:tint="@android:color/white" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -108,6 +118,7 @@
                         android:textColor="#333333"
                         android:layout_marginBottom="12dp" />
 
+                    <!-- Địa chỉ -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -140,6 +151,7 @@
 
                     </LinearLayout>
 
+                    <!-- Thời gian giao hàng -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -172,6 +184,7 @@
 
                     </LinearLayout>
 
+                    <!-- Khuyến mãi -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -208,39 +221,45 @@
             </androidx.cardview.widget.CardView>
 
             <!-- Danh sách món ăn -->
-            <LinearLayout
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
                 android:layout_margin="12dp"
-                android:background="@android:color/white"
-                android:padding="16dp">
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🍽️ DANH SÁCH MÓN ĂN"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#333333"
-                    android:layout_marginBottom="12dp" />
-
-                <ProgressBar
-                    android:id="@+id/progressBar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_margin="16dp"
-                    android:visibility="gone" />
-
-                <!-- QUAN TRỌNG: RecyclerView với chiều cao cụ thể -->
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvFoods"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-            </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🍽️ DANH SÁCH MÓN ĂN"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#333333"
+                        android:layout_marginBottom="12dp" />
+
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_margin="16dp"
+                        android:visibility="gone" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvFoods"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
 
         </LinearLayout>
 

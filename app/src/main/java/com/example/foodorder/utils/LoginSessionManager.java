@@ -21,7 +21,7 @@ public class LoginSessionManager {
     }
 
     public void createLoginSession(String userId, String email, String userName) {
-        Log.d(TAG, "Creating session - userId: " + userId);
+        Log.d(TAG, "Creating session - userId: " + userId + ", email: " + email);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.putString(KEY_USER_ID, userId);
         editor.putString(KEY_USER_EMAIL, email);
@@ -50,5 +50,6 @@ public class LoginSessionManager {
     public void logout() {
         editor.clear();
         editor.apply();
+        Log.d(TAG, "Session cleared");
     }
 }

@@ -30,7 +30,6 @@
         <activity android:name=".SearchActivity" />
         <activity android:name=".VoucherSelectionActivity" />
         <activity android:name=".CheckoutActivity" />
-        <activity android:name=".WalletTopUpActivity" />
         <activity android:name=".WalletActivity" />
 
     </application>

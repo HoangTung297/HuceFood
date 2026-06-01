@@ -298,7 +298,6 @@
                 android:layout_height="wrap_content"
                 android:padding="12dp">
 
-                <!-- Chỉ giữ lại COD và Momo, bỏ Banking -->
                 <RadioButton
                     android:id="@+id/rbCOD"
                     android:layout_width="match_parent"
@@ -308,13 +307,40 @@
                     android:checked="true" />
 
                 <RadioButton
-                    android:id="@+id/rbMomo"
+                    android:id="@+id/rbBankTransfer"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="📱 Ví MoMo"
+                    android:text="🏦 Chuyển khoản ngân hàng"
+                    android:textSize="14sp" />
+
+                <RadioButton
+                    android:id="@+id/rbWallet"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="💳 Thanh toán bằng ví (Số dư: 0đ)"
                     android:textSize="14sp" />
 
             </RadioGroup>
+
+            <!-- Thêm LinearLayout hiển thị thông tin ví -->
+            <LinearLayout
+                android:id="@+id/layoutWalletInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:background="#F0F0F0"
+                android:visibility="gone"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/tvWalletBalance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Số dư ví: 0đ"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
 
         </androidx.cardview.widget.CardView>
 

@@ -3,26 +3,25 @@ package com.example.foodorder.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.foodorder.R;
 import com.example.foodorder.model.BankAccount;
-
 import java.util.List;
 
 public class BankAccountAdapter extends RecyclerView.Adapter<BankAccountAdapter.ViewHolder> {
 
     private List<BankAccount> accounts;
-    private OnItemClickListener listener;
+    private OnBankAccountClickListener listener;
 
-    public interface OnItemClickListener {
-        void onItemClick(BankAccount account);
+    public interface OnBankAccountClickListener {
+        void onBankAccountClick(BankAccount account);
+        void onDeleteClick(BankAccount account);
     }
 
-    public BankAccountAdapter(List<BankAccount> accounts, OnItemClickListener listener) {
+    public BankAccountAdapter(List<BankAccount> accounts, OnBankAccountClickListener listener) {
         this.accounts = accounts;
         this.listener = listener;
     }
@@ -38,7 +37,12 @@ public class BankAccountAdapter extends RecyclerView.Adapter<BankAccountAdapter.
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         BankAccount account = accounts.get(position);
-        holder.bind(account, listener);
+        holder.tvBankName.setText(account.getBankName());
+        holder.tvAccountNumber.setText(account.getAccountNumber());
+        holder.tvAccountHolder.setText(account.getAccountHolder());
+
+        holder.itemView.setOnClickListener(v -> listener.onBankAccountClick(account));
+        holder.ivDelete.setOnClickListener(v -> listener.onDeleteClick(account));
     }
 
     @Override
@@ -48,21 +52,14 @@ public class BankAccountAdapter extends RecyclerView.Adapter<BankAccountAdapter.
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvBankName, tvAccountNumber, tvAccountHolder;
+        ImageView ivDelete;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvBankName = itemView.findViewById(R.id.tvBankName);
             tvAccountNumber = itemView.findViewById(R.id.tvAccountNumber);
             tvAccountHolder = itemView.findViewById(R.id.tvAccountHolder);
-        }
-
-        void bind(BankAccount account, OnItemClickListener listener) {
-            tvBankName.setText(account.getBankName());
-            tvAccountNumber.setText("Số TK: " + account.getAccountNumber());
-            tvAccountHolder.setText("Chủ TK: " + account.getAccountHolder());
-            itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onItemClick(account);
-            });
+            ivDelete = itemView.findViewById(R.id.ivDelete);
         }
     }
 }

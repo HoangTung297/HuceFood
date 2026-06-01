@@ -7,6 +7,7 @@ import com.example.foodorder.model.Order;
 import com.example.foodorder.model.Rating;
 import com.example.foodorder.model.Restaurant;
 import com.example.foodorder.model.Voucher;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
@@ -181,7 +182,7 @@ public class FirebaseRepository {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Order> orders = new ArrayList<>();
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Order order = convertDocumentToOrder(doc);
+                        Order order = convertQueryDocumentToOrder(doc);
                         orders.add(order);
                     }
                     orders.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
@@ -201,13 +202,34 @@ public class FirebaseRepository {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Order> orders = new ArrayList<>();
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                        Order order = convertDocumentToOrder(doc);
+                        Order order = convertQueryDocumentToOrder(doc);
                         orders.add(order);
                     }
                     orders.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
                     callback.onSuccess(orders);
                 })
                 .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    // ==================== GET ORDER BY ID ====================
+    public void getOrderById(String orderId, OnDataLoaded<Order> callback) {
+        Log.d(TAG, "Getting order by ID: " + orderId);
+
+        db.collection("orders").document(orderId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Order order = convertDocumentSnapshotToOrder(documentSnapshot);
+                        Log.d(TAG, "Order found: " + order.getOrderCode() + " - " + order.getRestaurantName());
+                        callback.onSuccess(order);
+                    } else {
+                        Log.e(TAG, "Order not found with ID: " + orderId);
+                        callback.onError("Order not found");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error getting order: " + e.getMessage());
+                    callback.onError(e.getMessage());
+                });
     }
 
     public void updateOrderStatus(String orderId, String status, OnDataLoaded<Void> callback) {
@@ -260,7 +282,8 @@ public class FirebaseRepository {
                 });
     }
 
-    private Order convertDocumentToOrder(QueryDocumentSnapshot doc) {
+    // ==================== CONVERT METHODS ====================
+    private Order convertQueryDocumentToOrder(QueryDocumentSnapshot doc) {
         Order order = new Order();
         order.setId(doc.getId());
         order.setUserId(doc.getString("userId"));
@@ -286,6 +309,32 @@ public class FirebaseRepository {
         return order;
     }
 
+    private Order convertDocumentSnapshotToOrder(DocumentSnapshot doc) {
+        Order order = new Order();
+        order.setId(doc.getId());
+        order.setUserId(doc.getString("userId"));
+        order.setOrderCode(doc.getString("orderCode"));
+        order.setRestaurantId(doc.getString("restaurantId"));
+        order.setRestaurantName(doc.getString("restaurantName"));
+        order.setItems((List<Map<String, Object>>) doc.get("items"));
+        order.setSubtotal(getDoubleFromDoc(doc, "subtotal"));
+        order.setDeliveryFee(getDoubleFromDoc(doc, "deliveryFee"));
+        order.setDiscount(getDoubleFromDoc(doc, "discount"));
+        order.setFinalTotal(getDoubleFromDoc(doc, "finalTotal"));
+        order.setStatus(doc.getString("status"));
+        order.setPaymentMethod(doc.getString("paymentMethod"));
+        order.setPaymentStatus(doc.getString("paymentStatus"));
+        order.setOrderNote(doc.getString("orderNote"));
+        order.setCreatedAt(getLongFromDoc(doc, "createdAt"));
+        order.setUpdatedAt(getLongFromDoc(doc, "updatedAt"));
+        order.setDeliveredAt(getLongFromDoc(doc, "deliveredAt"));
+        order.setCancelledAt(getLongFromDoc(doc, "cancelledAt"));
+        order.setDeliveryName(doc.getString("deliveryName"));
+        order.setDeliveryPhone(doc.getString("deliveryPhone"));
+        order.setDeliveryAddress(doc.getString("deliveryAddress"));
+        return order;
+    }
+
     // ==================== HELPER METHODS ====================
     private double getDouble(QueryDocumentSnapshot doc, String field) {
         Object value = doc.get(field);
@@ -297,6 +346,24 @@ public class FirebaseRepository {
     }
 
     private long getLong(QueryDocumentSnapshot doc, String field) {
+        Object value = doc.get(field);
+        if (value == null) return 0;
+        if (value instanceof Long) return (Long) value;
+        if (value instanceof Integer) return ((Integer) value).longValue();
+        if (value instanceof Double) return ((Double) value).longValue();
+        return 0;
+    }
+
+    private double getDoubleFromDoc(DocumentSnapshot doc, String field) {
+        Object value = doc.get(field);
+        if (value == null) return 0;
+        if (value instanceof Double) return (Double) value;
+        if (value instanceof Long) return ((Long) value).doubleValue();
+        if (value instanceof Integer) return ((Integer) value).doubleValue();
+        return 0;
+    }
+
+    private long getLongFromDoc(DocumentSnapshot doc, String field) {
         Object value = doc.get(field);
         if (value == null) return 0;
         if (value instanceof Long) return (Long) value;
@@ -428,23 +495,30 @@ public class FirebaseRepository {
     }
 
     public void updateWalletBalance(String userId, double newBalance, OnDataLoaded<Void> callback) {
+        Log.d(TAG, "Cập nhật số dư ví - userId: " + userId + ", newBalance: " + newBalance);
+
         Map<String, Object> updates = new HashMap<>();
         updates.put("balance", newBalance);
         updates.put("updatedAt", System.currentTimeMillis());
 
         db.collection("wallets").document(userId).update(updates)
                 .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "✅ Cập nhật số dư ví thành công!");
                     if (callback != null) callback.onSuccess(null);
                 })
                 .addOnFailureListener(e -> {
+                    Log.e(TAG, "❌ Lỗi cập nhật số dư ví: " + e.getMessage());
                     if (callback != null) callback.onError(e.getMessage());
                 });
     }
 
     // ==================== BANK ACCOUNTS ====================
     public void getLinkedBankAccounts(String userId, OnDataLoaded<List<BankAccount>> callback) {
+        Log.d(TAG, "Getting bank accounts for userId: " + userId);
+
         db.collection("bankAccounts")
                 .whereEqualTo("userId", userId)
+                .whereEqualTo("linked", true)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<BankAccount> accounts = new ArrayList<>();
@@ -461,6 +535,8 @@ public class FirebaseRepository {
     }
 
     public void addBankAccount(BankAccount account, OnDataLoaded<String> callback) {
+        Log.d(TAG, "Adding bank account for userId: " + account.getUserId());
+
         db.collection("bankAccounts").add(account)
                 .addOnSuccessListener(documentReference -> {
                     if (callback != null) callback.onSuccess(documentReference.getId());

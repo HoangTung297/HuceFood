@@ -1,5 +1,6 @@
 package com.example.foodorder.fragment;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -36,6 +37,7 @@ public class DeliveringFragment extends Fragment {
     private OrderAdapter adapter;
     private List<Order> orderList;
     private FirebaseRepository repository;
+    private LoginSessionManager sessionManager;
     private static final String TAG = "DeliveringFragment";
 
     @Nullable
@@ -48,6 +50,7 @@ public class DeliveringFragment extends Fragment {
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
 
         repository = FirebaseRepository.getInstance();
+        sessionManager = new LoginSessionManager(requireContext());
         orderList = new ArrayList<>();
 
         setupRecyclerView();
@@ -58,44 +61,120 @@ public class DeliveringFragment extends Fragment {
 
     private void setupRecyclerView() {
         adapter = new OrderAdapter(orderList,
-                order -> {
-                    // Click vào đơn hàng
-                    Toast.makeText(getContext(), order.getRestaurantName(), Toast.LENGTH_SHORT).show();
-                },
-                order -> {
-                    // Hủy đơn
-                    showCancelConfirmDialog(order);
-                },
-                order -> {
-                    // Đã nhận hàng
-                    showReceivedConfirmDialog(order);
-                }
+                order -> showOrderDetailDialog(order),
+                order -> showCancelConfirmDialog(order),
+                order -> showReceivedConfirmDialog(order)
         );
         rvDeliveringOrders.setLayoutManager(new LinearLayoutManager(getContext()));
         rvDeliveringOrders.setAdapter(adapter);
     }
 
-    private String getUserId() {
-        LoginSessionManager sessionManager = new LoginSessionManager(getContext());
-        String userId = sessionManager.getUserId();
+    private void showOrderDetailDialog(Order order) {
+        Dialog dialog = new Dialog(getContext());
+        dialog.setContentView(R.layout.dialog_order_detail);
 
-        if (userId == null || userId.isEmpty()) {
-            SharedPreferences prefs = getContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
-            userId = prefs.getString("user_email", "");
+        // Ánh xạ view
+        TextView tvOrderId = dialog.findViewById(R.id.tvOrderId);
+        TextView tvStatus = dialog.findViewById(R.id.tvStatus);
+        TextView tvRestaurantName = dialog.findViewById(R.id.tvRestaurantName);
+        TextView tvOrderDate = dialog.findViewById(R.id.tvOrderDate);
+        TextView tvPaymentMethod = dialog.findViewById(R.id.tvPaymentMethod);
+        TextView tvItems = dialog.findViewById(R.id.tvItems);
+        TextView tvOrderNote = dialog.findViewById(R.id.tvOrderNote);
+        TextView tvTotalPrice = dialog.findViewById(R.id.tvTotalPrice);
+        Button btnClose = dialog.findViewById(R.id.btnClose);
+
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
+
+        // Set dữ liệu
+        String orderCode = order.getOrderCode();
+        if (orderCode == null || orderCode.isEmpty()) {
+            String id = order.getId();
+            orderCode = id != null && id.length() > 8 ? id.substring(0, 8) : id;
+        }
+        tvOrderId.setText(orderCode);
+
+        String status = order.getStatus();
+        if ("pending".equals(status)) {
+            tvStatus.setText("Chờ xác nhận");
+            tvStatus.setTextColor(0xFFFF9800);
+        } else if ("delivering".equals(status)) {
+            tvStatus.setText("Đang giao");
+            tvStatus.setTextColor(0xFF2196F3);
+        } else if ("delivered".equals(status)) {
+            tvStatus.setText("Đã giao");
+            tvStatus.setTextColor(0xFF4CAF50);
+        } else if ("cancelled".equals(status)) {
+            tvStatus.setText("Đã hủy");
+            tvStatus.setTextColor(0xFFF44336);
         }
 
+        tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng");
+
+        if (order.getCreatedAt() > 0) {
+            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+        } else {
+            tvOrderDate.setText("Đang cập nhật");
+        }
+
+        String paymentMethod = order.getPaymentMethod();
+        if ("COD".equals(paymentMethod)) {
+            tvPaymentMethod.setText("Thanh toán khi nhận hàng");
+        } else if ("Banking".equals(paymentMethod)) {
+            tvPaymentMethod.setText("Chuyển khoản ngân hàng");
+        } else if ("Wallet".equals(paymentMethod)) {
+            tvPaymentMethod.setText("Ví điện tử");
+        } else {
+            tvPaymentMethod.setText(paymentMethod != null ? paymentMethod : "COD");
+        }
+
+        // Danh sách món
+        StringBuilder items = new StringBuilder();
+        if (order.getItems() != null) {
+            for (Map<String, Object> item : order.getItems()) {
+                String name = (String) item.get("name");
+                long quantity = 1;
+                Object qtyObj = item.get("quantity");
+                if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                else if (qtyObj instanceof Integer) quantity = (Integer) qtyObj;
+                items.append("• ").append(name).append(" x").append(quantity).append("\n");
+            }
+        }
+        tvItems.setText(items.toString());
+
+        // Ghi chú
+        String note = order.getOrderNote();
+        if (note == null || note.isEmpty()) {
+            tvOrderNote.setText("Không có ghi chú");
+        } else {
+            tvOrderNote.setText(note);
+        }
+
+        // Tổng tiền
+        tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
+
+        // Đóng dialog
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+    private String getUserId() {
+        String userId = sessionManager.getUserId();
+        if (userId == null || userId.isEmpty()) {
+            SharedPreferences prefs = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+            userId = prefs.getString("user_email", "");
+        }
         if (userId == null || userId.isEmpty()) {
             userId = "tung@gmail.com";
         }
-
-        Log.d(TAG, "getUserId: " + userId);
         return userId;
     }
 
     private void loadOrders() {
         String userId = getUserId();
-        Log.d(TAG, "=== LOADING ORDERS ===");
-        Log.d(TAG, "UserId: " + userId);
 
         if (userId.isEmpty()) {
             layoutEmpty.setVisibility(View.VISIBLE);
@@ -106,41 +185,34 @@ public class DeliveringFragment extends Fragment {
         layoutEmpty.setVisibility(View.GONE);
         rvDeliveringOrders.setVisibility(View.VISIBLE);
 
-        // Lấy đơn hàng có status "pending" (chờ xác nhận)
+        // Lấy đơn hàng pending và delivering
         repository.getOrdersByStatus(userId, "pending", new FirebaseRepository.OnDataLoaded<List<Order>>() {
             @Override
             public void onSuccess(List<Order> data) {
                 orderList.clear();
                 if (data != null && !data.isEmpty()) {
                     orderList.addAll(data);
-                    Log.d(TAG, "Found " + data.size() + " pending orders");
                 }
 
-                // Lấy thêm đơn hàng có status "delivering" (đang giao)
                 repository.getOrdersByStatus(userId, "delivering", new FirebaseRepository.OnDataLoaded<List<Order>>() {
                     @Override
                     public void onSuccess(List<Order> deliveringData) {
                         if (deliveringData != null && !deliveringData.isEmpty()) {
                             orderList.addAll(deliveringData);
-                            Log.d(TAG, "Found " + deliveringData.size() + " delivering orders");
                         }
-
                         adapter.notifyDataSetChanged();
 
                         if (orderList.isEmpty()) {
                             rvDeliveringOrders.setVisibility(View.GONE);
                             layoutEmpty.setVisibility(View.VISIBLE);
-                            Log.d(TAG, "No orders found");
                         } else {
                             rvDeliveringOrders.setVisibility(View.VISIBLE);
                             layoutEmpty.setVisibility(View.GONE);
-                            Log.d(TAG, "Total orders: " + orderList.size());
                         }
                     }
 
                     @Override
                     public void onError(String error) {
-                        Log.e(TAG, "Error loading delivering orders: " + error);
                         adapter.notifyDataSetChanged();
                         if (orderList.isEmpty()) {
                             rvDeliveringOrders.setVisibility(View.GONE);
@@ -152,7 +224,6 @@ public class DeliveringFragment extends Fragment {
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "Error loading pending orders: " + error);
                 layoutEmpty.setVisibility(View.VISIBLE);
                 rvDeliveringOrders.setVisibility(View.GONE);
             }
@@ -163,9 +234,7 @@ public class DeliveringFragment extends Fragment {
         new AlertDialog.Builder(getContext())
                 .setTitle("Xác nhận hủy đơn")
                 .setMessage("Bạn có chắc chắn muốn hủy đơn hàng #" + order.getOrderCode() + " không?")
-                .setPositiveButton("Hủy đơn", (dialog, which) -> {
-                    cancelOrder(order);
-                })
+                .setPositiveButton("Hủy đơn", (dialog, which) -> cancelOrder(order))
                 .setNegativeButton("Quay lại", null)
                 .show();
     }
@@ -174,9 +243,7 @@ public class DeliveringFragment extends Fragment {
         new AlertDialog.Builder(getContext())
                 .setTitle("Xác nhận đã nhận hàng")
                 .setMessage("Bạn đã nhận được đơn hàng #" + order.getOrderCode() + " chưa?")
-                .setPositiveButton("Đã nhận hàng", (dialog, which) -> {
-                    confirmReceived(order);
-                })
+                .setPositiveButton("Đã nhận hàng", (dialog, which) -> confirmReceived(order))
                 .setNegativeButton("Chưa", null)
                 .show();
     }
@@ -185,7 +252,7 @@ public class DeliveringFragment extends Fragment {
         repository.updateOrderStatus(order.getId(), "cancelled", new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
             public void onSuccess(Void data) {
-                Toast.makeText(getContext(), "Đã hủy đơn hàng #" + order.getOrderCode(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Đã hủy đơn hàng", Toast.LENGTH_SHORT).show();
                 loadOrders();
             }
 
@@ -287,7 +354,6 @@ public class DeliveringFragment extends Fragment {
                 }
                 tvOrderId.setText("Mã: #" + orderCode);
 
-                // Hiển thị trạng thái
                 String status = order.getStatus();
                 if ("pending".equals(status)) {
                     tvStatus.setText("⏳ Chờ xác nhận");
@@ -301,8 +367,15 @@ public class DeliveringFragment extends Fragment {
                 } else if ("cancelled".equals(status)) {
                     tvStatus.setText("❌ Đã hủy");
                     tvStatus.setTextColor(0xFFF44336);
+                }
+
+                // Hiển thị nút
+                if ("delivered".equals(status) || "cancelled".equals(status)) {
+                    btnCancel.setVisibility(View.GONE);
+                    btnReceived.setVisibility(View.GONE);
                 } else {
-                    tvStatus.setText(status);
+                    btnCancel.setVisibility(View.VISIBLE);
+                    btnReceived.setVisibility(View.VISIBLE);
                 }
 
                 if (order.getCreatedAt() > 0) {
@@ -320,27 +393,13 @@ public class DeliveringFragment extends Fragment {
                         String name = (String) item.get("name");
                         long quantity = 1;
                         Object qtyObj = item.get("quantity");
-                        if (qtyObj instanceof Long) {
-                            quantity = (Long) qtyObj;
-                        } else if (qtyObj instanceof Double) {
-                            quantity = ((Double) qtyObj).longValue();
-                        } else if (qtyObj instanceof Integer) {
-                            quantity = (Integer) qtyObj;
-                        }
+                        if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                        else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                        else if (qtyObj instanceof Integer) quantity = (Integer) qtyObj;
                         items.append("• ").append(name).append(" x").append(quantity).append("\n");
                     }
                 }
                 tvFoodItems.setText(items.toString());
-
-                // LUÔN HIỂN THỊ CẢ 2 NÚT (trừ khi đã giao hoặc đã hủy)
-                if ("delivered".equals(status) || "cancelled".equals(status)) {
-                    btnCancel.setVisibility(View.GONE);
-                    btnReceived.setVisibility(View.GONE);
-                } else {
-                    // pending hoặc delivering đều hiển thị cả 2 nút
-                    btnCancel.setVisibility(View.VISIBLE);
-                    btnReceived.setVisibility(View.VISIBLE);
-                }
 
                 btnCancel.setOnClickListener(v -> cancelListener.onCancel(order));
                 btnReceived.setOnClickListener(v -> receivedListener.onReceived(order));

@@ -1,23 +1,22 @@
 package com.example.foodorder.fragment;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
-import android.util.Log;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.example.foodorder.CheckoutActivity;
 import com.example.foodorder.R;
 import com.example.foodorder.adapter.CartAdapter;
 import com.example.foodorder.adapter.VoucherAdapter;
@@ -36,6 +35,8 @@ import java.util.Map;
 
 public class CartFragment extends Fragment {
 
+    private static final int REQUEST_CHECKOUT = 100;
+
     private RecyclerView rvCart;
     private TextView tvTotalPrice, tvDeliveryFee, tvDiscount, tvFinalTotal, tvEmptyCart;
     private TextView tvVoucherApplied, tvVoucherName;
@@ -44,7 +45,6 @@ public class CartFragment extends Fragment {
     private CartAdapter adapter;
     private List<CartItem> cartItems;
     private List<Voucher> voucherList;
-    private VoucherAdapter voucherAdapter;
     private FirebaseRepository repository;
     private FirebaseFirestore db;
     private String userId = "user123";
@@ -108,10 +108,8 @@ public class CartFragment extends Fragment {
             SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
             userName = prefs.getString("user_name", "");
             userPhone = prefs.getString("user_phone", "");
-            // Lấy địa chỉ từ cùng SharedPreferences với HomeFragment
             userAddress = prefs.getString("user_address", "");
 
-            // Nếu chưa có, lấy từ delivery_address (cũ)
             if (userAddress.isEmpty()) {
                 userAddress = prefs.getString("delivery_address", "");
             }
@@ -388,184 +386,48 @@ public class CartFragment extends Fragment {
         }
         if (isApplyingVoucher) return;
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_checkout, null);
-
-        TextView tvOrderItems = dialogView.findViewById(R.id.tvOrderItems);
-        TextView tvOrderSubtotal = dialogView.findViewById(R.id.tvOrderSubtotal);
-        TextView tvOrderDelivery = dialogView.findViewById(R.id.tvOrderDelivery);
-        TextView tvOrderDiscount = dialogView.findViewById(R.id.tvOrderDiscount);
-        TextView tvOrderTotal = dialogView.findViewById(R.id.tvOrderTotal);
-        EditText etDeliveryName = dialogView.findViewById(R.id.etDeliveryName);
-        EditText etDeliveryPhone = dialogView.findViewById(R.id.etDeliveryPhone);
-        EditText etDeliveryAddress = dialogView.findViewById(R.id.etDeliveryAddress);
-        EditText etOrderNote = dialogView.findViewById(R.id.etOrderNote);
-        RadioGroup rgPayment = dialogView.findViewById(R.id.rgPayment);
-        Button btnConfirm = dialogView.findViewById(R.id.btnConfirmOrder);
-        Button btnCancel = dialogView.findViewById(R.id.btnCancelOrder);
-
-        SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
-        etDeliveryName.setText(userName);
-        etDeliveryPhone.setText(userPhone);
-        etDeliveryAddress.setText(userAddress);
-
-        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
         double subtotal = 0;
-        StringBuilder itemsText = new StringBuilder();
-
         for (CartItem item : cartItems) {
-            itemsText.append("• ").append(item.getName()).append(" x").append(item.getQuantity());
-            if (item.getNote() != null && !item.getNote().isEmpty()) {
-                itemsText.append("\n  📝 ").append(item.getNote());
-            }
-            itemsText.append("\n");
             subtotal += item.getTotalPrice();
         }
-
-        tvOrderItems.setText(itemsText.toString());
         double finalTotal = subtotal + deliveryFee - discount;
-        tvOrderSubtotal.setText(f.format(subtotal) + "đ");
-        tvOrderDelivery.setText(f.format(deliveryFee) + "đ");
-        tvOrderDiscount.setText("-" + f.format(discount) + "đ");
-        tvOrderTotal.setText(f.format(finalTotal) + "đ");
 
-        AlertDialog dialog = builder.setView(dialogView).setTitle("Xác nhận đơn hàng").create();
-        dialog.show();
+        Intent intent = new Intent(getActivity(), CheckoutActivity.class);
+        intent.putExtra("totalAmount", subtotal);
+        intent.putExtra("finalTotal", finalTotal);
+        intent.putExtra("discount", discount);
+        intent.putExtra("deliveryFee", deliveryFee);
+        intent.putExtra("cartItems", new ArrayList<>(cartItems));
 
-        btnConfirm.setOnClickListener(v -> {
-            String deliveryName = etDeliveryName.getText().toString().trim();
-            String deliveryPhone = etDeliveryPhone.getText().toString().trim();
-            String deliveryAddress = etDeliveryAddress.getText().toString().trim();
-            String orderNote = etOrderNote.getText().toString();
-
-            if (deliveryName.isEmpty()) {
-                Toast.makeText(getContext(), "Vui lòng nhập họ tên", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (deliveryPhone.isEmpty()) {
-                Toast.makeText(getContext(), "Vui lòng nhập số điện thoại", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (deliveryAddress.isEmpty()) {
-                Toast.makeText(getContext(), "Vui lòng nhập địa chỉ", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Lưu lại thông tin người dùng
-            prefs.edit().putString("user_name", deliveryName).apply();
-            prefs.edit().putString("user_phone", deliveryPhone).apply();
-            prefs.edit().putString("user_address", deliveryAddress).apply();
-
-            int selectedId = rgPayment.getCheckedRadioButtonId();
-            String paymentMethod = "COD";
-            if (selectedId == R.id.rbCOD) paymentMethod = "COD";
-            else if (selectedId == R.id.rbMomo) paymentMethod = "Momo";
-
-            createOrder(orderNote, paymentMethod, deliveryName, deliveryPhone, deliveryAddress);
-            dialog.dismiss();
-        });
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        startActivityForResult(intent, REQUEST_CHECKOUT);
     }
 
-    private void createOrder(String orderNote, String paymentMethod, String deliveryName, String deliveryPhone, String deliveryAddress) {
-        if (isApplyingVoucher) return;
-        isApplyingVoucher = true;
-        btnCheckout.setEnabled(false);
-        btnCheckout.setText("Đang xử lý...");
-
-        Order order = new Order();
-        order.setUserId(userId);
-        order.setOrderCode("ORD" + System.currentTimeMillis());
-        order.setDeliveryName(deliveryName);
-        order.setDeliveryPhone(deliveryPhone);
-        order.setDeliveryAddress(deliveryAddress);
-
-        if (!cartItems.isEmpty()) {
-            order.setRestaurantId(cartItems.get(0).getRestaurantId());
-            order.setRestaurantName(cartItems.get(0).getName());
-        }
-
-        List<Map<String, Object>> itemsMap = new ArrayList<>();
-        double subtotal = 0;
-        for (CartItem item : cartItems) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("foodId", item.getFoodId());
-            map.put("name", item.getName());
-            map.put("price", item.getPrice());
-            map.put("quantity", item.getQuantity());
-            map.put("imageUrl", item.getImageUrl());
-            map.put("note", item.getNote() != null ? item.getNote() : "");
-            itemsMap.add(map);
-            subtotal += item.getTotalPrice();
-        }
-
-        order.setItems(itemsMap);
-        order.setSubtotal(subtotal);
-        order.setTotalPrice(subtotal);
-        order.setDeliveryFee(deliveryFee);
-        order.setDiscount(discount);
-        order.setFinalTotal(Math.max(0, subtotal + deliveryFee - discount));
-        order.setStatus("pending");
-        order.setCreatedAt(System.currentTimeMillis());
-        order.setPaymentMethod(paymentMethod);
-        order.setOrderNote(orderNote);
-        if (selectedVoucherCode != null) order.setVoucherCode(selectedVoucherCode);
-
-        repository.createOrder(order, new FirebaseRepository.OnDataLoaded<String>() {
-            @Override
-            public void onSuccess(String orderId) {
-                repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
-                    @Override
-                    public void onSuccess(Void data) {
-                        createOrderNotification(orderId);
-                        clearSelectedVoucher();
-                        loadCart();
-                        isApplyingVoucher = false;
-                        btnCheckout.setEnabled(true);
-                        btnCheckout.setText("THANH TOÁN");
-                        String paymentText = paymentMethod.equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo";
-                        Toast.makeText(getContext(), "Đặt hàng thành công!\nMã: #" + orderId + "\n" + paymentText, Toast.LENGTH_LONG).show();
-                    }
-                    @Override
-                    public void onError(String error) {
-                        isApplyingVoucher = false;
-                        btnCheckout.setEnabled(true);
-                        btnCheckout.setText("THANH TOÁN");
-                        Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                        loadCart();
-                    }
-                });
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CHECKOUT && resultCode == getActivity().RESULT_OK) {
+            if (data != null && data.getBooleanExtra("refresh", false)) {
+                refreshData();
+                Toast.makeText(getContext(), "Đã cập nhật giỏ hàng", Toast.LENGTH_SHORT).show();
             }
-            @Override
-            public void onError(String error) {
-                isApplyingVoucher = false;
-                btnCheckout.setEnabled(true);
-                btnCheckout.setText("THANH TOÁN");
-                Toast.makeText(getContext(), "Đặt hàng thất bại: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
+        }
     }
 
     private void createOrderNotification(String orderCode) {
         if (getActivity() == null) return;
 
-        java.util.HashMap<String, Object> notification = new java.util.HashMap<>();
+        HashMap<String, Object> notification = new HashMap<>();
         notification.put("userId", userId);
         notification.put("title", "Đặt hàng thành công 🎉");
-        notification.put("message", "Đơn hàng #" + orderCode + " đã được đặt thành công. Nhà hàng sẽ xác nhận trong giây lát.");
+        notification.put("message", "Đơn hàng #" + orderCode + " đã được đặt thành công.");
         notification.put("type", "order");
         notification.put("createdAt", System.currentTimeMillis());
         notification.put("isRead", false);
         notification.put("orderId", orderCode);
 
         db.collection("notifications").add(notification)
-                .addOnSuccessListener(docRef -> {
-                    Log.d("CartFragment", "Đã tạo thông báo cho đơn hàng: " + orderCode);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("CartFragment", "Lỗi tạo thông báo: " + e.getMessage());
-                });
+                .addOnSuccessListener(docRef -> Log.d("CartFragment", "Đã tạo thông báo"))
+                .addOnFailureListener(e -> Log.e("CartFragment", "Lỗi tạo thông báo: " + e.getMessage()));
     }
 
     public void refreshData() {

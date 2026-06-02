@@ -7,6 +7,7 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
 import com.example.foodorder.adapter.ViewPagerAdapter;
 import com.example.foodorder.fragment.FavoriteFragment;
@@ -23,7 +24,6 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class HomeActivity extends AppCompatActivity {
 
     public static final String ACTION_REFRESH_CART = "com.example.foodorder.REFRESH_CART";
-    public static final String ACTION_REFRESH_ORDERS = "com.example.foodorder.REFRESH_ORDERS";
 
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
@@ -132,9 +132,9 @@ public class HomeActivity extends AppCompatActivity {
             public void onSuccess(Void data) {
                 Toast.makeText(HomeActivity.this, "Đã thêm " + food.getName() + " vào giỏ", Toast.LENGTH_SHORT).show();
 
-                // Gửi broadcast để refresh CartFragment
+                // Gửi broadcast bằng LocalBroadcastManager
                 Intent intent = new Intent(ACTION_REFRESH_CART);
-                sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(HomeActivity.this).sendBroadcast(intent);
             }
 
             @Override

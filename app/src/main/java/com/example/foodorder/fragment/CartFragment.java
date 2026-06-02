@@ -1,12 +1,12 @@
 package com.example.foodorder.fragment;
 
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.CheckoutActivity;
@@ -33,7 +34,6 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import androidx.annotation.Nullable;
 import java.util.List;
 import java.util.Locale;
 
@@ -74,13 +74,11 @@ public class CartFragment extends Fragment {
     };
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Đăng ký BroadcastReceiver
+        // Đăng ký BroadcastReceiver với LocalBroadcastManager
         IntentFilter filter = new IntentFilter(HomeActivity.ACTION_REFRESH_CART);
-        if (getContext() != null) {
-            getContext().registerReceiver(refreshReceiver, filter);
-        }
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(refreshReceiver, filter);
     }
 
     @Override
@@ -512,12 +510,10 @@ public class CartFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         // Hủy đăng ký BroadcastReceiver
-        if (getContext() != null) {
-            try {
-                getContext().unregisterReceiver(refreshReceiver);
-            } catch (IllegalArgumentException e) {
-                // Receiver not registered
-            }
+        try {
+            LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(refreshReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.CheckoutActivity;
+import com.example.foodorder.HomeActivity;
 import com.example.foodorder.R;
 import com.example.foodorder.adapter.CartAdapter;
 import com.example.foodorder.adapter.VoucherAdapter;
@@ -24,11 +25,11 @@ import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Voucher;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.ShippingFeeHelper;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -98,8 +99,16 @@ public class CartFragment extends Fragment {
 
         layoutVoucher.setOnClickListener(v -> showVoucherDialog());
         btnCheckout.setOnClickListener(v -> showCheckoutDialog());
+
+        // SỬA NÚT "MUA SẮM NGAY" - CHUYỂN TAB VỀ HOME
         btnGoShopping.setOnClickListener(v -> {
             if (getActivity() != null) {
+                // Chuyển BottomNavigation về tab Home
+                BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottomNavigationView);
+                if (bottomNav != null) {
+                    bottomNav.setSelectedItemId(R.id.nav_home);
+                }
+                // Chuyển fragment
                 getActivity().getSupportFragmentManager().beginTransaction()
                         .replace(R.id.fragment_container, new HomeFragment())
                         .commit();
@@ -124,7 +133,6 @@ public class CartFragment extends Fragment {
                 userAddress = prefs.getString("delivery_address", "");
             }
 
-            // Cập nhật phí giao hàng dựa trên địa chỉ
             updateShippingFeeBasedOnAddress();
         }
 

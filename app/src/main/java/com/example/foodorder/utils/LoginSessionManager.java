@@ -10,6 +10,9 @@ public class LoginSessionManager {
     private static final String KEY_USER_ID = "userId";
     private static final String KEY_USER_EMAIL = "userEmail";
     private static final String KEY_USER_NAME = "userName";
+    private static final String KEY_USER_PHONE = "userPhone";
+    private static final String KEY_USER_ADDRESS = "userAddress";
+    private static final String KEY_DELIVERY_ADDRESS = "deliveryAddress";
     private static final String TAG = "SessionManager";
 
     private SharedPreferences pref;
@@ -20,13 +23,25 @@ public class LoginSessionManager {
         editor = pref.edit();
     }
 
-    public void createLoginSession(String userId, String email, String userName) {
+    public void createLoginSession(String userId, String email, String userName, String phone, String address) {
         Log.d(TAG, "Creating session - userId: " + userId + ", email: " + email);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.putString(KEY_USER_ID, userId);
         editor.putString(KEY_USER_EMAIL, email);
         editor.putString(KEY_USER_NAME, userName);
+        editor.putString(KEY_USER_PHONE, phone);
+        editor.putString(KEY_USER_ADDRESS, address);
+        editor.putString(KEY_DELIVERY_ADDRESS, address);
         editor.apply();
+    }
+
+    public void updateUserInfo(String name, String phone, String address) {
+        editor.putString(KEY_USER_NAME, name);
+        editor.putString(KEY_USER_PHONE, phone);
+        editor.putString(KEY_USER_ADDRESS, address);
+        editor.putString(KEY_DELIVERY_ADDRESS, address);
+        editor.apply();
+        Log.d(TAG, "Updated user info");
     }
 
     public boolean isLoggedIn() {
@@ -43,6 +58,18 @@ public class LoginSessionManager {
 
     public String getUserName() {
         return pref.getString(KEY_USER_NAME, "");
+    }
+
+    public String getUserPhone() {
+        return pref.getString(KEY_USER_PHONE, "");
+    }
+
+    public String getUserAddress() {
+        return pref.getString(KEY_USER_ADDRESS, "");
+    }
+
+    public String getDeliveryAddress() {
+        return pref.getString(KEY_DELIVERY_ADDRESS, "");
     }
 
     public void logout() {

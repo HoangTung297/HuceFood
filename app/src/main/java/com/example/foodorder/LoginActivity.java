@@ -33,12 +33,6 @@ public class LoginActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         sessionManager = new LoginSessionManager(this);
 
-        // Kiểm tra đã đăng nhập chưa
-        if (sessionManager.isLoggedIn()) {
-            navigateToMain();
-            return;
-        }
-
         initViews();
         setupClickListeners();
 
@@ -126,13 +120,19 @@ public class LoginActivity extends AppCompatActivity {
                             String userAddress = doc.getString("address") != null ? doc.getString("address") : "";
 
                             // Lưu vào SessionManager
-                            sessionManager.createLoginSession(userId, userEmail, userName);
+                            sessionManager.createLoginSession(userId, userEmail, userName, userPhone, userAddress);
 
                             // Lưu vào SharedPreferences
                             saveUserSession(userId, userName, userEmail, userPhone, userAddress);
 
                             Toast.makeText(this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
-                            navigateToMain();
+
+                            // Chuyển sang HomeActivity
+                            Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            startActivity(intent);
+                            finish();
+                            return;
                         } else {
                             Toast.makeText(this, "Mật khẩu không đúng", Toast.LENGTH_SHORT).show();
                         }
@@ -157,12 +157,5 @@ public class LoginActivity extends AppCompatActivity {
         editor.putString("delivery_address", userAddress);
         editor.putBoolean("is_logged_in", true);
         editor.apply();
-    }
-
-    private void navigateToMain() {
-        Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
     }
 }

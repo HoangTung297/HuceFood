@@ -18,6 +18,7 @@ import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.LoginSessionManager;
+import com.example.foodorder.utils.ShippingFeeHelper;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -40,26 +41,12 @@ public class CheckoutActivity extends AppCompatActivity {
     private double walletBalance = 0;
     private double totalAmount = 0;
     private double subtotalAmount = 0;
-    private double deliveryFee = 15000;
+    private double deliveryFee = 0;
     private double discountAmount = 0;
     private List<CartItem> cartItems;
     private String selectedPaymentMethod = "COD";
     private static final String TAG = "CheckoutActivity";
     private boolean isProcessing = false;
-
-    // Map ánh xạ restaurantId -> tên nhà hàng
-    private static final Map<String, String> RESTAURANT_NAME_MAP = new HashMap<>();
-    static {
-        RESTAURANT_NAME_MAP.put("pho_thin", "Phở Thìn");
-        RESTAURANT_NAME_MAP.put("kfc", "KFC");
-        RESTAURANT_NAME_MAP.put("cong_ca_phe", "Cộng Cà Phê");
-        RESTAURANT_NAME_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
-        RESTAURANT_NAME_MAP.put("pizza_hut", "Pizza Hut");
-        RESTAURANT_NAME_MAP.put("lotteria", "Lotteria");
-        RESTAURANT_NAME_MAP.put("ding_tea", "Ding Tea");
-        RESTAURANT_NAME_MAP.put("mcdonalds", "McDonald's");
-        RESTAURANT_NAME_MAP.put("bo_to_quan", "Bò Tơ Quán");
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,11 +84,18 @@ public class CheckoutActivity extends AppCompatActivity {
     private void loadData() {
         subtotalAmount = getIntent().getDoubleExtra("totalAmount", 0);
         discountAmount = getIntent().getDoubleExtra("discount", 0);
-        deliveryFee = getIntent().getDoubleExtra("deliveryFee", 15000);
+        deliveryFee = getIntent().getDoubleExtra("deliveryFee", 0);
         cartItems = (List<CartItem>) getIntent().getSerializableExtra("cartItems");
 
         if (cartItems == null) {
             cartItems = new ArrayList<>();
+        }
+
+        // Nếu không có phí ship từ Intent, tính theo địa chỉ
+        if (deliveryFee == 0) {
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            String address = prefs.getString("delivery_address", "");
+            deliveryFee = ShippingFeeHelper.getShippingFee(address);
         }
 
         totalAmount = subtotalAmount + deliveryFee - discountAmount;
@@ -151,6 +145,7 @@ public class CheckoutActivity extends AppCompatActivity {
                             if (address != null && !address.isEmpty()) {
                                 etDeliveryAddress.setText(address);
                                 prefs.edit().putString("user_address", address).apply();
+                                prefs.edit().putString("delivery_address", address).apply();
                             }
                         }
                     });
@@ -255,15 +250,6 @@ public class CheckoutActivity extends AppCompatActivity {
                 .apply();
     }
 
-    // Lấy tên nhà hàng từ restaurantId
-    private String getRestaurantNameFromId(String restaurantId) {
-        if (restaurantId == null || restaurantId.isEmpty()) {
-            return "Nhà hàng";
-        }
-        String name = RESTAURANT_NAME_MAP.get(restaurantId.toLowerCase());
-        return name != null ? name : "Nhà hàng";
-    }
-
     private void processOrder() {
         String name = etDeliveryName.getText().toString().trim();
         String phone = etDeliveryPhone.getText().toString().trim();
@@ -337,25 +323,14 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setUserId(userId);
         order.setOrderCode("ORD" + System.currentTimeMillis());
 
-        // Lấy thông tin nhà hàng từ cart item
-        String restaurantId = null;
         String restaurantName = "Nhà hàng";
-
         if (cartItems != null && !cartItems.isEmpty() && cartItems.get(0) != null) {
-            restaurantId = cartItems.get(0).getRestaurantId();
-            restaurantName = getRestaurantNameFromId(restaurantId);
-
-            // Nếu không có restaurantId hoặc không tìm thấy trong map
-            if (restaurantName == null || restaurantName.equals("Nhà hàng")) {
-                // Fallback: dùng tên món
-                restaurantName = cartItems.get(0).getName();
-                if (restaurantName == null || restaurantName.isEmpty()) {
-                    restaurantName = "Nhà hàng";
-                }
+            restaurantName = cartItems.get(0).getName();
+            if (restaurantName == null || restaurantName.isEmpty()) {
+                restaurantName = "Nhà hàng";
             }
         }
 
-        order.setRestaurantId(restaurantId);
         order.setRestaurantName(restaurantName);
         order.setDeliveryName(name);
         order.setDeliveryPhone(phone);
@@ -389,7 +364,6 @@ public class CheckoutActivity extends AppCompatActivity {
                 map.put("quantity", item.getQuantity());
                 map.put("imageUrl", item.getImageUrl() != null ? item.getImageUrl() : "");
                 map.put("note", item.getNote() != null ? item.getNote() : "");
-                map.put("restaurantId", item.getRestaurantId());
                 items.add(map);
             }
         }

@@ -23,6 +23,7 @@ import com.example.foodorder.adapter.VoucherAdapter;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Voucher;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.ShippingFeeHelper;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
@@ -55,7 +56,6 @@ public class CartFragment extends Fragment {
     private double discount = 0;
     private double deliveryFee = 15000;
     private boolean isApplyingVoucher = false;
-    private boolean isFirstLoad = true;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -63,7 +63,7 @@ public class CartFragment extends Fragment {
         initViews(view);
         setupRecyclerView();
 
-        // Hiển thị layout trống ngay lập tức, sau đó mới load dữ liệu
+        // Hiển thị layout trống ngay lập tức
         showEmptyLayoutImmediately();
 
         loadCart();
@@ -107,7 +107,6 @@ public class CartFragment extends Fragment {
         });
     }
 
-    // Hiển thị layout trống ngay lập tức
     private void showEmptyLayoutImmediately() {
         layoutCartContent.setVisibility(View.GONE);
         layoutEmpty.setVisibility(View.VISIBLE);
@@ -124,6 +123,9 @@ public class CartFragment extends Fragment {
             if (userAddress.isEmpty()) {
                 userAddress = prefs.getString("delivery_address", "");
             }
+
+            // Cập nhật phí giao hàng dựa trên địa chỉ
+            updateShippingFeeBasedOnAddress();
         }
 
         if (userName.isEmpty() || userPhone.isEmpty()) {
@@ -139,9 +141,24 @@ public class CartFragment extends Fragment {
                                 prefs.edit().putString("user_name", userName).apply();
                                 prefs.edit().putString("user_phone", userPhone).apply();
                                 prefs.edit().putString("user_address", userAddress).apply();
+                                prefs.edit().putString("delivery_address", userAddress).apply();
                             }
+
+                            updateShippingFeeBasedOnAddress();
+                            calculateTotals();
                         }
                     });
+        }
+    }
+
+    private void updateShippingFeeBasedOnAddress() {
+        if (getActivity() != null) {
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+            String address = prefs.getString("delivery_address", "");
+            if (address == null || address.isEmpty()) {
+                address = prefs.getString("user_address", "");
+            }
+            deliveryFee = ShippingFeeHelper.getShippingFee(address);
         }
     }
 
@@ -177,15 +194,14 @@ public class CartFragment extends Fragment {
                 cartItems.clear();
                 cartItems.addAll(data);
                 adapter.updateList(cartItems);
+                updateShippingFeeBasedOnAddress();
                 calculateTotals();
 
                 if (cartItems.isEmpty()) {
-                    // Hiển thị layout trống
                     layoutCartContent.setVisibility(View.GONE);
                     layoutEmpty.setVisibility(View.VISIBLE);
                     rvCart.setVisibility(View.GONE);
                 } else {
-                    // Hiển thị nội dung giỏ hàng
                     layoutCartContent.setVisibility(View.VISIBLE);
                     layoutEmpty.setVisibility(View.GONE);
                     rvCart.setVisibility(View.VISIBLE);
@@ -196,7 +212,6 @@ public class CartFragment extends Fragment {
             @Override
             public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                // Vẫn hiển thị layout trống nếu có lỗi
                 layoutCartContent.setVisibility(View.GONE);
                 layoutEmpty.setVisibility(View.VISIBLE);
                 rvCart.setVisibility(View.GONE);
@@ -337,7 +352,7 @@ public class CartFragment extends Fragment {
 
     private void clearSelectedVoucher() {
         discount = 0;
-        deliveryFee = 15000;
+        updateShippingFeeBasedOnAddress();
         selectedVoucher = null;
         selectedVoucherCode = null;
         tvVoucherApplied.setVisibility(View.GONE);
@@ -379,6 +394,7 @@ public class CartFragment extends Fragment {
     private void calculateTotals() {
         double subtotal = 0;
         for (CartItem item : cartItems) subtotal += item.getTotalPrice();
+
         double finalTotal = subtotal + deliveryFee - discount;
         if (finalTotal < 0) finalTotal = 0;
 
@@ -409,6 +425,9 @@ public class CartFragment extends Fragment {
         for (CartItem item : cartItems) {
             subtotal += item.getTotalPrice();
         }
+
+        updateShippingFeeBasedOnAddress();
+
         double finalTotal = subtotal + deliveryFee - discount;
 
         Intent intent = new Intent(getActivity(), CheckoutActivity.class);

@@ -23,6 +23,7 @@ public class LoginSessionManager {
         editor = pref.edit();
     }
 
+    // Method với 5 tham số (đầy đủ)
     public void createLoginSession(String userId, String email, String userName, String phone, String address) {
         Log.d(TAG, "Creating session - userId: " + userId + ", email: " + email);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
@@ -32,6 +33,19 @@ public class LoginSessionManager {
         editor.putString(KEY_USER_PHONE, phone);
         editor.putString(KEY_USER_ADDRESS, address);
         editor.putString(KEY_DELIVERY_ADDRESS, address);
+        editor.apply();
+    }
+
+    // Method với 3 tham số (overload - dùng khi không có phone và address)
+    public void createLoginSession(String userId, String email, String userName) {
+        Log.d(TAG, "Creating session (3 params) - userId: " + userId + ", email: " + email);
+        editor.putBoolean(KEY_IS_LOGGED_IN, true);
+        editor.putString(KEY_USER_ID, userId);
+        editor.putString(KEY_USER_EMAIL, email);
+        editor.putString(KEY_USER_NAME, userName);
+        editor.putString(KEY_USER_PHONE, "");
+        editor.putString(KEY_USER_ADDRESS, "");
+        editor.putString(KEY_DELIVERY_ADDRESS, "");
         editor.apply();
     }
 

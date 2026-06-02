@@ -280,32 +280,47 @@ public class HomeFragment extends Fragment {
         }
 
         isLoading = true;
-        tvStatus.setText("Đang tải món ăn...");
         tvStatus.setVisibility(View.VISIBLE);
+        tvStatus.setText("Đang tải món ăn...");
 
         firestore.collection("foods").limit(100).get()
                 .addOnSuccessListener(query -> {
                     allFoodsList.clear();
-                    for (QueryDocumentSnapshot doc : query) {
-                        String name = doc.getString("name");
-                        String desc = doc.getString("description");
-                        Double price = doc.getDouble("price");
-                        String category = doc.getString("category");
-                        String imageUrl = doc.getString("imageUrl");
-                        Long soldCount = doc.getLong("soldCount");
-                        Double rating = doc.getDouble("rating");
-                        String restaurantName = doc.getString("restaurant");
+                    for (QueryDocumentSnapshot document : query) {
+                        String name = document.getString("name");
+                        if (name == null) name = "Món ăn";
 
-                        Food food = new Food(doc.getId(),
-                                name != null ? name : "Món ăn",
-                                desc != null ? desc : "",
-                                price != null ? price : 0,
-                                category != null ? category : "Khác",
-                                "");
-                        food.setImageUrl(imageUrl != null ? imageUrl : "");
-                        food.setSoldCount(soldCount != null ? soldCount.intValue() : 0);
-                        food.setRating(rating != null ? rating : 0);
-                        food.setRestaurantName(restaurantName != null ? restaurantName : "Nhà hàng");
+                        String desc = document.getString("description");
+                        if (desc == null) desc = "";
+
+                        Double price = document.getDouble("price");
+                        if (price == null) price = 0.0;
+
+                        String category = document.getString("category");
+                        if (category == null) category = "Khác";
+
+                        String imageUrl = document.getString("imageUrl");
+                        if (imageUrl == null) imageUrl = "";
+
+                        Long soldCount = document.getLong("soldCount");
+                        if (soldCount == null) soldCount = 0L;
+
+                        Double rating = document.getDouble("rating");
+                        if (rating == null) rating = 0.0;
+
+                        String restaurantName = document.getString("restaurant");
+                        if (restaurantName == null) restaurantName = "Nhà hàng";
+
+                        // LẤY RESTAURANT_ID - DÙNG BIẾN document
+                        String restaurantId = document.getString("restaurantId");
+                        if (restaurantId == null) restaurantId = "";
+
+                        Food food = new Food(document.getId(), name, desc, price, category, "");
+                        food.setImageUrl(imageUrl);
+                        food.setSoldCount(soldCount.intValue());
+                        food.setRating(rating);
+                        food.setRestaurantName(restaurantName);
+                        food.setRestaurantId(restaurantId);
                         allFoodsList.add(food);
                     }
 
@@ -315,6 +330,7 @@ public class HomeFragment extends Fragment {
 
                     processAndDisplayData();
                     isLoading = false;
+                    tvStatus.setVisibility(View.GONE);
                 })
                 .addOnFailureListener(e -> {
                     tvStatus.setText("Lỗi: " + e.getMessage());
@@ -411,16 +427,18 @@ public class HomeFragment extends Fragment {
 
         btnSave.setOnClickListener(v -> {
             String newAddress = etAddress.getText().toString().trim();
-            if (isValidAddress(newAddress)) {
+            if (!newAddress.isEmpty()) {
                 saveAddress(newAddress);
                 dialog.dismiss();
             } else {
-                Toast.makeText(getContext(), "Vui lòng nhập địa chỉ đầy đủ (Số nhà, Đường, Phường/Xã, Quận/Huyện, Thành phố)", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), "Vui lòng nhập địa chỉ", Toast.LENGTH_SHORT).show();
             }
         });
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
     }
+
+
 
     private void suggestAddresses(String query) {
         addressSuggestions.clear();
@@ -464,17 +482,7 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    private boolean isValidAddress(String address) {
-        if (address == null || address.isEmpty()) return false;
 
-        boolean hasNumber = address.matches(".*\\d+.*");
-        boolean hasStreet = address.contains("Đường") || address.contains("Phố") || address.contains("Ngõ") || address.contains("Hẻm");
-        boolean hasDistrict = address.contains("Quận") || address.contains("Huyện");
-        boolean hasCity = address.contains("Hà Nội") || address.contains("TP.HCM") || address.contains("Đà Nẵng") ||
-                address.contains("Hải Phòng") || address.contains("Cần Thơ");
-
-        return hasNumber && hasStreet && hasDistrict && hasCity;
-    }
 
     private void saveAddress(String newAddress) {
         SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);

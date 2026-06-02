@@ -18,8 +18,10 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.adapter.FoodAdapter;
+import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.LoginSessionManager;
 import com.example.foodorder.utils.StringUtils;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -42,6 +44,7 @@ public class SearchActivity extends AppCompatActivity {
     private FoodAdapter suggestionAdapter;
     private FirebaseFirestore db;
     private FirebaseRepository repository;
+    private LoginSessionManager sessionManager;
     private String userId = "user123";
 
     @Override
@@ -51,10 +54,16 @@ public class SearchActivity extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
         repository = FirebaseRepository.getInstance();
+        sessionManager = new LoginSessionManager(this);
 
-        if (getSharedPreferences("UserPrefs", MODE_PRIVATE) != null) {
-            userId = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                    .getString("user_id", "user123");
+        // Lấy userId từ session
+        userId = sessionManager.getUserId();
+        if (userId == null || userId.isEmpty()) {
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            userId = prefs.getString("user_email", "user123");
+            if (userId == null || userId.isEmpty()) {
+                userId = prefs.getString("user_id", "user123");
+            }
         }
 
         initViews();
@@ -127,11 +136,15 @@ public class SearchActivity extends AppCompatActivity {
                         String restaurantName = doc.getString("restaurant");
                         if (restaurantName == null) restaurantName = "Nhà hàng";
 
+                        String restaurantId = doc.getString("restaurantId");
+                        if (restaurantId == null) restaurantId = "";
+
                         Food food = new Food(doc.getId(), name, description, price, category, "");
                         food.setImageUrl(imageUrl);
                         food.setSoldCount(soldCount.intValue());
                         food.setRating(rating);
                         food.setRestaurantName(restaurantName);
+                        food.setRestaurantId(restaurantId);
                         allFoodsList.add(food);
                     }
                 })
@@ -199,13 +212,11 @@ public class SearchActivity extends AppCompatActivity {
         });
     }
 
-    // SỬA LẠI HÀM performSearch - HỖ TRỢ TÌM KIẾM KHÔNG DẤU
     private void performSearch(String query) {
         String searchQuery = query.toLowerCase().trim();
         resultList.clear();
 
         for (Food food : allFoodsList) {
-            // Sử dụng StringUtils.containsIgnoreCaseAndAccent để tìm kiếm không dấu
             if (StringUtils.containsIgnoreCaseAndAccent(food.getName(), searchQuery) ||
                     StringUtils.containsIgnoreCaseAndAccent(food.getDescription(), searchQuery) ||
                     StringUtils.containsIgnoreCaseAndAccent(food.getCategory(), searchQuery) ||
@@ -254,10 +265,14 @@ public class SearchActivity extends AppCompatActivity {
                         String restaurantName = doc.getString("restaurant");
                         if (restaurantName == null) restaurantName = "Nhà hàng";
 
+                        String restaurantId = doc.getString("restaurantId");
+                        if (restaurantId == null) restaurantId = "";
+
                         Food food = new Food(doc.getId(), name, "", price, "", "");
                         food.setImageUrl(imageUrl);
                         food.setRating(rating);
                         food.setRestaurantName(restaurantName);
+                        food.setRestaurantId(restaurantId);
                         suggestionList.add(food);
                     }
                     suggestionAdapter.updateList(suggestionList);
@@ -305,12 +320,12 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     private void onAddToCart(Food food) {
-        com.example.foodorder.model.CartItem cartItem = new com.example.foodorder.model.CartItem();
+        CartItem cartItem = new CartItem();
         cartItem.setFoodId(food.getId());
         cartItem.setName(food.getName());
         cartItem.setPrice(food.getPrice());
         cartItem.setQuantity(1);
-        cartItem.setRestaurantId(food.getRestaurantName());
+        cartItem.setRestaurantId(food.getRestaurantId());
         cartItem.setImageUrl(food.getImageUrl());
 
         repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {

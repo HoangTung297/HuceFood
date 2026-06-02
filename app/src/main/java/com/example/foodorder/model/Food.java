@@ -13,7 +13,7 @@ public class Food implements Serializable {
     private double rating;
     private String restaurantName;
     private String restaurantId;
-    private String favoriteId;  // THÊM DÒNG NÀY
+    private String favoriteId;
 
     public Food() {}
 
@@ -42,7 +42,7 @@ public class Food implements Serializable {
     public double getRating() { return rating; }
     public String getRestaurantName() { return restaurantName; }
     public String getRestaurantId() { return restaurantId; }
-    public String getFavoriteId() { return favoriteId; }  // THÊM DÒNG NÀY
+    public String getFavoriteId() { return favoriteId; }
 
     // Setters
     public void setId(String id) { this.id = id; }
@@ -55,5 +55,5 @@ public class Food implements Serializable {
     public void setRating(double rating) { this.rating = rating; }
     public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
     public void setRestaurantId(String restaurantId) { this.restaurantId = restaurantId; }
-    public void setFavoriteId(String favoriteId) { this.favoriteId = favoriteId; }  // THÊM DÒNG NÀY
+    public void setFavoriteId(String favoriteId) { this.favoriteId = favoriteId; }
 }

@@ -9,7 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
-import com.example.foodorder.utils.RestaurantNameHelper;
+import com.example.foodorder.utils.RestaurantHelper;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -95,8 +95,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
                 tvOrderDate.setText("Đang cập nhật");
             }
 
-            // DÙNG HELPER ĐỂ LẤY TÊN NHÀ HÀNG
-            tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+            tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
             tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
             // Hiển thị danh sách món
@@ -109,11 +108,15 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
                     if (qtyObj instanceof Long) quantity = (Long) qtyObj;
                     else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
                     items.append("• ").append(name).append(" x").append(quantity).append("\n");
+
+                    String note = (String) item.get("note");
+                    if (note != null && !note.isEmpty()) {
+                        items.append("  📝 ").append(note).append("\n");
+                    }
                 }
             }
             tvFoodItems.setText(items.toString());
 
-            // Hiển thị trạng thái và nút xóa
             String status = order.getStatus();
             if ("delivered".equals(status)) {
                 tvStatus.setText("✅ Đã giao thành công");

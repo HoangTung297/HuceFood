@@ -18,10 +18,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
-import com.example.foodorder.utils.RestaurantNameHelper;
+import com.example.foodorder.utils.LoginSessionManager;
+import com.example.foodorder.utils.RestaurantHelper;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,6 +35,7 @@ public class RatingFragment extends Fragment {
     private RatingOrderAdapter adapter;
     private List<Order> orderList;
     private FirebaseRepository repository;
+    private LoginSessionManager sessionManager;
     private String userId = "user123";
 
     @Override
@@ -44,12 +47,12 @@ public class RatingFragment extends Fragment {
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
 
         repository = FirebaseRepository.getInstance();
+        sessionManager = new LoginSessionManager(getContext());
         orderList = new ArrayList<>();
 
-        if (getActivity() != null) {
-            userId = getActivity().getSharedPreferences("UserPrefs", 0)
-                    .getString("user_id", "user123");
-            if (userId == null || userId.isEmpty()) {
+        userId = sessionManager.getUserId();
+        if (userId == null || userId.isEmpty()) {
+            if (getActivity() != null) {
                 userId = getActivity().getSharedPreferences("UserPrefs", 0)
                         .getString("user_email", "user123");
             }
@@ -63,8 +66,8 @@ public class RatingFragment extends Fragment {
 
     private void setupRecyclerView() {
         adapter = new RatingOrderAdapter(orderList,
-                order -> showOrderDetail(order),      // Click xem chi tiết
-                order -> showRatingDialog(order)      // Click nút đánh giá
+                order -> showOrderDetail(order),
+                order -> showRatingDialog(order)
         );
         rvOrders.setLayoutManager(new LinearLayoutManager(getContext()));
         rvOrders.setAdapter(adapter);
@@ -98,7 +101,6 @@ public class RatingFragment extends Fragment {
         });
     }
 
-    // Hiển thị chi tiết đơn hàng
     private void showOrderDetail(Order order) {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
 
@@ -122,10 +124,10 @@ public class RatingFragment extends Fragment {
         }
         tvOrderId.setText(orderCode);
 
-        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+        tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
 
         if (order.getCreatedAt() > 0) {
-            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
         } else {
             tvOrderDate.setText("Đang cập nhật");
         }
@@ -133,8 +135,6 @@ public class RatingFragment extends Fragment {
         String paymentMethod = order.getPaymentMethod();
         if ("COD".equals(paymentMethod)) {
             tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
-        } else if ("Banking".equals(paymentMethod)) {
-            tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
         } else if ("Wallet".equals(paymentMethod)) {
             tvPaymentMethod.setText("💳 Ví điện tử");
         } else {
@@ -145,27 +145,20 @@ public class RatingFragment extends Fragment {
         tvStatus.setText("✅ Đã giao thành công");
         tvStatus.setTextColor(0xFF4CAF50);
 
-        // Danh sách món kèm ghi chú
         StringBuilder itemsText = new StringBuilder();
         if (order.getItems() != null) {
             for (Map<String, Object> item : order.getItems()) {
                 String name = (String) item.get("name");
                 long quantity = 1;
                 Object qtyObj = item.get("quantity");
-                if (qtyObj instanceof Long) {
-                    quantity = (Long) qtyObj;
-                } else if (qtyObj instanceof Double) {
-                    quantity = ((Double) qtyObj).longValue();
-                } else if (qtyObj instanceof Integer) {
-                    quantity = (Integer) qtyObj;
-                }
-                itemsText.append("• ").append(name).append(" x").append(quantity);
+                if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
 
                 String note = (String) item.get("note");
                 if (note != null && !note.isEmpty()) {
-                    itemsText.append("\n  📝 ").append(note);
+                    itemsText.append("  📝 ").append(note).append("\n");
                 }
-                itemsText.append("\n");
             }
         }
         tvItems.setText(itemsText.toString());
@@ -200,11 +193,10 @@ public class RatingFragment extends Fragment {
         NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
 
-        // Hiển thị thông tin đơn hàng
-        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+        tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
 
         String orderInfo = "Mã đơn: " + order.getOrderCode() + "\n" +
-                "Ngày đặt: " + sdf.format(new java.util.Date(order.getCreatedAt())) + "\n" +
+                "Ngày đặt: " + sdf.format(new Date(order.getCreatedAt())) + "\n" +
                 "Tổng tiền: " + f.format(order.getFinalTotal()) + "đ";
         tvOrderInfo.setText(orderInfo);
 
@@ -279,13 +271,8 @@ public class RatingFragment extends Fragment {
         private OnItemClickListener itemClickListener;
         private OnRateClickListener rateClickListener;
 
-        interface OnItemClickListener {
-            void onItemClick(Order order);
-        }
-
-        interface OnRateClickListener {
-            void onRateClick(Order order);
-        }
+        interface OnItemClickListener { void onItemClick(Order order); }
+        interface OnRateClickListener { void onRateClick(Order order); }
 
         RatingOrderAdapter(List<Order> orders, OnItemClickListener itemClickListener, OnRateClickListener rateClickListener) {
             this.orders = orders;
@@ -338,15 +325,14 @@ public class RatingFragment extends Fragment {
                 tvOrderId.setText("Mã: #" + orderCode);
 
                 if (order.getCreatedAt() > 0) {
-                    tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+                    tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
                 } else {
                     tvOrderDate.setText("Đang cập nhật");
                 }
 
-                tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+                tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
                 tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
-                // Danh sách món
                 StringBuilder itemsText = new StringBuilder();
                 if (order.getItems() != null) {
                     for (Map<String, Object> item : order.getItems()) {
@@ -356,6 +342,11 @@ public class RatingFragment extends Fragment {
                         if (qtyObj instanceof Long) quantity = (Long) qtyObj;
                         else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
                         itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
+
+                        String note = (String) item.get("note");
+                        if (note != null && !note.isEmpty()) {
+                            itemsText.append("  📝 ").append(note).append("\n");
+                        }
                     }
                 }
                 tvFoodItems.setText(itemsText.toString());

@@ -54,7 +54,7 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
         // Tên món
         holder.tvName.setText(food.getName());
 
-        // Mô tả - HIỂN THỊ BÌNH THƯỜNG
+        // Mô tả
         String description = food.getDescription();
         if (description != null && !description.isEmpty()) {
             holder.tvDesc.setText(description);
@@ -88,7 +88,7 @@ public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.ViewHolder> {
             holder.ivImage.setImageResource(R.drawable.ic_food_default);
         }
 
-        // Nút thêm
+        // Nút thêm - Truyền cả food (đã có restaurantId)
         holder.btnAdd.setOnClickListener(v -> {
             if (onAddToCart != null) {
                 onAddToCart.onAddToCartClick(food);

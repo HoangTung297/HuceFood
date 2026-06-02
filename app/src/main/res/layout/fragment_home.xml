@@ -11,62 +11,69 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header -->
+        <!-- Khung 1: HUCE FOOD (màu cam) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:background="#FF5722"
             android:padding="16dp"
-            android:background="#FFFFFF"
             android:gravity="center_vertical"
             android:elevation="2dp">
 
-            <LinearLayout
-                android:id="@+id/layoutAddress"
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Giao đến:"
-                    android:textSize="12sp"
-                    android:textColor="#757575"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/tvAddress"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Chọn địa chỉ"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="#FF5722"/>
-
-                    <ImageView
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:src="@drawable/ic_dropdown"
-                        android:layout_marginStart="4dp"/>
-                </LinearLayout>
-            </LinearLayout>
+                android:text="HUCE FOOD"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white" />
 
             <ImageView
                 android:id="@+id/ivAvatar"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:src="@drawable/ic_profile"
                 android:background="@drawable/circle_background"
-                android:padding="8dp"/>
+                android:padding="6dp" />
+
+        </LinearLayout>
+
+        <!-- Khung 2: Địa chỉ (màu trắng/cam nhạt) -->
+        <LinearLayout
+            android:id="@+id/layoutAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="#FFF5E6"
+            android:padding="12dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📍"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tvAddress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Chọn địa chỉ"
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:layout_marginStart="8dp" />
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_dropdown"
+                android:tint="#FF5722" />
+
         </LinearLayout>
 
         <!-- Search -->
@@ -89,7 +96,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_search"
-                    android:tint="#757575"/>
+                    android:tint="#757575" />
 
                 <EditText
                     android:id="@+id/etSearch"
@@ -99,7 +106,10 @@
                     android:hint="Tìm kiếm món ăn..."
                     android:background="@null"
                     android:padding="8dp"
-                    android:inputType="text"/>
+                    android:inputType="text"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:cursorVisible="false" />
 
                 <ImageView
                     android:id="@+id/ivClearSearch"
@@ -107,7 +117,8 @@
                     android:layout_height="24dp"
                     android:src="@drawable/ic_close"
                     android:tint="#757575"
-                    android:visibility="gone"/>
+                    android:visibility="gone" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -116,9 +127,9 @@
             android:id="@+id/bannerViewPager"
             android:layout_width="match_parent"
             android:layout_height="180dp"
-            android:layout_margin="12dp"/>
+            android:layout_margin="12dp" />
 
-        <!-- FLASH SALE - QUAN TRỌNG: nestedScrollingEnabled="false" -->
+        <!-- FLASH SALE -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -127,7 +138,7 @@
             android:textStyle="bold"
             android:textColor="#FF5722"
             android:padding="16dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvFlashSale"
@@ -136,7 +147,7 @@
             android:nestedScrollingEnabled="false"
             android:orientation="vertical"
             android:layout_marginBottom="8dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <!-- HOT DEAL -->
         <TextView
@@ -146,7 +157,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvHotDeals"
@@ -155,7 +166,7 @@
             android:nestedScrollingEnabled="false"
             android:orientation="vertical"
             android:layout_marginBottom="8dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <!-- VOUCHER -->
         <TextView
@@ -165,7 +176,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvVouchers"
@@ -182,7 +193,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvCategories"
@@ -191,7 +202,7 @@
             android:orientation="horizontal"
             android:nestedScrollingEnabled="false"
             android:layout_marginBottom="8dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <!-- TẤT CẢ MÓN ĂN -->
         <TextView
@@ -201,7 +212,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:padding="16dp"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvAllFoods"
@@ -209,7 +220,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="80dp"
             android:nestedScrollingEnabled="false"
-            android:background="#FFFFFF"/>
+            android:background="#FFFFFF" />
 
         <TextView
             android:id="@+id/tvStatus"
@@ -220,7 +231,7 @@
             android:gravity="center"
             android:padding="16dp"
             android:textColor="#FF5722"
-            android:visibility="gone"/>
+            android:visibility="gone" />
 
     </LinearLayout>
 

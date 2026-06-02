@@ -19,12 +19,15 @@ import com.example.foodorder.adapter.OrderHistoryAdapter;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.CacheManager;
-import com.example.foodorder.utils.RestaurantNameHelper;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class OrderHistoryFragment extends Fragment {
 
@@ -38,9 +41,27 @@ public class OrderHistoryFragment extends Fragment {
     private String userId = "user123";
     private boolean isLoading = false;
 
+    // Map ánh xạ ID nhà hàng sang tên thật
+    private static final Map<String, String> RESTAURANT_NAME_MAP = new java.util.HashMap<>();
+    static {
+        RESTAURANT_NAME_MAP.put("pho_thin", "Phở Thìn");
+        RESTAURANT_NAME_MAP.put("kfc", "KFC");
+        RESTAURANT_NAME_MAP.put("cong_ca_phe", "Cộng Cà Phê");
+        RESTAURANT_NAME_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
+        RESTAURANT_NAME_MAP.put("pizza_hut", "Pizza Hut");
+        RESTAURANT_NAME_MAP.put("lotteria", "Lotteria");
+        RESTAURANT_NAME_MAP.put("ding_tea", "Ding Tea");
+        RESTAURANT_NAME_MAP.put("mcdonalds", "McDonald's");
+        RESTAURANT_NAME_MAP.put("bo_to_quan", "Bò Tơ Quán");
+    }
+
+    private static final String[] FOOD_KEYWORDS = {"Phở", "Cà phê", "Cơm", "Pizza", "Burger",
+            "Gà", "Trà", "Sữa", "Bánh", "Cháo", "Bún", "Mì", "Khoai", "Coca", "Spaghetti", "Pepsi"};
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_order_list, container, false);
+
         rvOrders = view.findViewById(R.id.rvOrders);
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
         progressBar = view.findViewById(R.id.progressBar);
@@ -67,12 +88,10 @@ public class OrderHistoryFragment extends Fragment {
 
     private void setupRecyclerView() {
         adapter = new OrderHistoryAdapter(orderList,
-                order -> {
-                    showOrderDetail(order);
-                },
+                order -> showOrderDetail(order),
                 (order, position) -> {
                     String status = order.getStatus();
-                    if ("cancelled".equals(status) || "delivered".equals(status)) {
+                    if ("delivered".equals(status) || "cancelled".equals(status)) {
                         showDeleteConfirmDialog(order, position);
                     } else {
                         Toast.makeText(getContext(), "Chỉ có thể xóa đơn hàng đã giao hoặc đã hủy", Toast.LENGTH_SHORT).show();
@@ -88,9 +107,7 @@ public class OrderHistoryFragment extends Fragment {
         new AlertDialog.Builder(getContext())
                 .setTitle("Xóa đơn hàng")
                 .setMessage("Bạn có chắc chắn muốn xóa đơn hàng " + statusText + " #" + order.getOrderCode() + " khỏi lịch sử?")
-                .setPositiveButton("Xóa", (dialog, which) -> {
-                    deleteOrder(order, position);
-                })
+                .setPositiveButton("Xóa", (dialog, which) -> deleteOrder(order, position))
                 .setNegativeButton("Hủy", null)
                 .show();
     }
@@ -124,6 +141,72 @@ public class OrderHistoryFragment extends Fragment {
         });
     }
 
+    // Lấy tên nhà hàng đúng từ item
+    private String getCorrectRestaurantNameFromItem(Map<String, Object> item) {
+        // Lấy từ restaurantName trong item
+        String name = (String) item.get("restaurantName");
+        if (name != null && !name.isEmpty() && !isFoodName(name)) {
+            return name;
+        }
+
+        // Lấy từ restaurantId
+        String restaurantId = (String) item.get("restaurantId");
+        if (restaurantId != null && !restaurantId.isEmpty()) {
+            String mappedName = RESTAURANT_NAME_MAP.get(restaurantId.toLowerCase());
+            if (mappedName != null) {
+                return mappedName;
+            }
+        }
+
+        // Lấy từ tên món (fallback)
+        String itemName = (String) item.get("name");
+        if (itemName != null && !itemName.isEmpty()) {
+            itemName = itemName.replaceAll("\\s+x\\d+$", "").trim();
+            for (String keyword : FOOD_KEYWORDS) {
+                if (itemName.contains(keyword)) {
+                    return itemName + " (Quán)";
+                }
+            }
+        }
+
+        return "Nhà hàng";
+    }
+
+    // Lấy danh sách tên nhà hàng duy nhất từ order
+    private String getUniqueRestaurantNames(Order order) {
+        Set<String> restaurantSet = new LinkedHashSet<>();
+
+        if (order.getItems() != null) {
+            for (Map<String, Object> item : order.getItems()) {
+                String restaurantName = getCorrectRestaurantNameFromItem(item);
+                restaurantSet.add(restaurantName);
+            }
+        }
+
+        if (restaurantSet.isEmpty()) {
+            return order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int index = 0;
+        for (String name : restaurantSet) {
+            if (index > 0) sb.append(", ");
+            sb.append(name);
+            index++;
+        }
+        return sb.toString();
+    }
+
+    private boolean isFoodName(String name) {
+        if (name == null) return true;
+        for (String keyword : FOOD_KEYWORDS) {
+            if (name.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void showOrderDetail(Order order) {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
 
@@ -137,6 +220,9 @@ public class OrderHistoryFragment extends Fragment {
         TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
         Button btnClose = dialogView.findViewById(R.id.btnClose);
 
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
         String orderCode = order.getOrderCode();
         if (orderCode == null || orderCode.isEmpty()) {
             String id = order.getId();
@@ -144,12 +230,11 @@ public class OrderHistoryFragment extends Fragment {
         }
         tvOrderId.setText(orderCode);
 
-        // Dùng helper để lấy tên nhà hàng
-        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+        String restaurantNames = getUniqueRestaurantNames(order);
+        tvRestaurantName.setText(restaurantNames);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         if (order.getCreatedAt() > 0) {
-            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
         } else {
             tvOrderDate.setText("Đang cập nhật");
         }
@@ -157,15 +242,13 @@ public class OrderHistoryFragment extends Fragment {
         String paymentMethod = order.getPaymentMethod();
         if ("COD".equals(paymentMethod)) {
             tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
-        } else if ("Banking".equals(paymentMethod)) {
-            tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
         } else if ("Wallet".equals(paymentMethod)) {
             tvPaymentMethod.setText("💳 Ví điện tử");
         } else {
             tvPaymentMethod.setText(paymentMethod != null ? paymentMethod : "COD");
         }
 
-        tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
+        tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
         String status = order.getStatus();
         if ("delivered".equals(status)) {
@@ -182,21 +265,32 @@ public class OrderHistoryFragment extends Fragment {
             tvStatus.setTextColor(0xFF2196F3);
         }
 
+        // Danh sách món kèm nhà hàng
         StringBuilder itemsText = new StringBuilder();
         if (order.getItems() != null) {
+            String currentRestaurant = "";
             for (Map<String, Object> item : order.getItems()) {
                 String name = (String) item.get("name");
                 long quantity = 1;
                 Object qtyObj = item.get("quantity");
                 if (qtyObj instanceof Long) quantity = (Long) qtyObj;
                 else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
-                itemsText.append("• ").append(name).append(" x").append(quantity);
+
+                String itemRestaurant = getCorrectRestaurantNameFromItem(item);
+
+                if (!itemRestaurant.equals(currentRestaurant)) {
+                    if (!currentRestaurant.isEmpty()) {
+                        itemsText.append("\n");
+                    }
+                    itemsText.append("🏠 ").append(itemRestaurant).append(":\n");
+                    currentRestaurant = itemRestaurant;
+                }
+                itemsText.append("  • ").append(name).append(" x").append(quantity).append("\n");
 
                 String note = (String) item.get("note");
                 if (note != null && !note.isEmpty()) {
-                    itemsText.append("\n  📝 ").append(note);
+                    itemsText.append("    📝 ").append(note).append("\n");
                 }
-                itemsText.append("\n");
             }
         }
         tvItems.setText(itemsText.toString());

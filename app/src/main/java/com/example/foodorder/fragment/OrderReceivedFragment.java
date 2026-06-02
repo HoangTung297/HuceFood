@@ -19,9 +19,12 @@ import com.example.foodorder.R;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
-import com.example.foodorder.utils.RestaurantNameHelper;
+import com.example.foodorder.utils.LoginSessionManager;
+import com.example.foodorder.utils.RestaurantHelper;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +37,7 @@ public class OrderReceivedFragment extends Fragment {
     private OrderReceivedAdapter adapter;
     private List<Order> orderList;
     private FirebaseRepository repository;
+    private LoginSessionManager sessionManager;
     private String userId = "user123";
     private boolean isLoading = false;
 
@@ -45,11 +49,11 @@ public class OrderReceivedFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
 
         repository = FirebaseRepository.getInstance();
+        sessionManager = new LoginSessionManager(getContext());
         orderList = new ArrayList<>();
 
         if (getActivity() != null) {
-            userId = getActivity().getSharedPreferences("UserPrefs", 0)
-                    .getString("user_id", "user123");
+            userId = sessionManager.getUserId();
             if (userId == null || userId.isEmpty()) {
                 userId = getActivity().getSharedPreferences("UserPrefs", 0)
                         .getString("user_email", "user123");
@@ -113,8 +117,9 @@ public class OrderReceivedFragment extends Fragment {
             cartItem.setName((String) itemMap.get("name"));
             cartItem.setPrice(((Number) itemMap.get("price")).doubleValue());
             cartItem.setQuantity(((Number) itemMap.get("quantity")).intValue());
-            cartItem.setRestaurantId(order.getRestaurantId());
+            cartItem.setRestaurantId((String) itemMap.get("restaurantId"));
             cartItem.setImageUrl((String) itemMap.get("imageUrl"));
+            cartItem.setNote((String) itemMap.get("note"));
 
             repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
                 @Override
@@ -128,7 +133,6 @@ public class OrderReceivedFragment extends Fragment {
 
         Toast.makeText(getContext(), "Đã thêm vào giỏ hàng!", Toast.LENGTH_SHORT).show();
 
-        // Chuyển sang tab giỏ hàng sau 1 giây
         new Handler().postDelayed(() -> {
             if (getParentFragment() instanceof OrderFragment) {
                 ((OrderFragment) getParentFragment()).switchToCartTab();
@@ -136,7 +140,6 @@ public class OrderReceivedFragment extends Fragment {
         }, 1000);
     }
 
-    // HIỂN THỊ CHI TIẾT ĐƠN HÀNG
     private void showOrderDetail(Order order) {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
 
@@ -150,6 +153,9 @@ public class OrderReceivedFragment extends Fragment {
         TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
         Button btnClose = dialogView.findViewById(R.id.btnClose);
 
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
         String orderCode = order.getOrderCode();
         if (orderCode == null || orderCode.isEmpty()) {
             String id = order.getId();
@@ -157,12 +163,10 @@ public class OrderReceivedFragment extends Fragment {
         }
         tvOrderId.setText(orderCode);
 
-        // DÙNG HELPER ĐỂ LẤY TÊN NHÀ HÀNG
-        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+        tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         if (order.getCreatedAt() > 0) {
-            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
         } else {
             tvOrderDate.setText("Đang cập nhật");
         }
@@ -170,52 +174,34 @@ public class OrderReceivedFragment extends Fragment {
         String paymentMethod = order.getPaymentMethod();
         if ("COD".equals(paymentMethod)) {
             tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
-        } else if ("Banking".equals(paymentMethod)) {
-            tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
         } else if ("Wallet".equals(paymentMethod)) {
             tvPaymentMethod.setText("💳 Ví điện tử");
         } else {
             tvPaymentMethod.setText(paymentMethod != null ? paymentMethod : "COD");
         }
 
-        tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
+        tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
+        tvStatus.setText("✅ Đã giao thành công");
+        tvStatus.setTextColor(0xFF4CAF50);
 
-        // Trạng thái
-        String status = order.getStatus();
-        if ("delivered".equals(status)) {
-            tvStatus.setText("✅ Đã giao thành công");
-            tvStatus.setTextColor(0xFF4CAF50);
-        } else {
-            tvStatus.setText(order.getStatusText());
-        }
-
-        // Danh sách món kèm ghi chú
         StringBuilder itemsText = new StringBuilder();
         if (order.getItems() != null) {
             for (Map<String, Object> item : order.getItems()) {
                 String name = (String) item.get("name");
                 long quantity = 1;
                 Object qtyObj = item.get("quantity");
-                if (qtyObj instanceof Long) {
-                    quantity = (Long) qtyObj;
-                } else if (qtyObj instanceof Double) {
-                    quantity = ((Double) qtyObj).longValue();
-                } else if (qtyObj instanceof Integer) {
-                    quantity = (Integer) qtyObj;
-                }
-                itemsText.append("• ").append(name).append(" x").append(quantity);
+                if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
 
-                // Ghi chú của món
                 String note = (String) item.get("note");
                 if (note != null && !note.isEmpty()) {
-                    itemsText.append("\n  📝 ").append(note);
+                    itemsText.append("  📝 ").append(note).append("\n");
                 }
-                itemsText.append("\n");
             }
         }
         tvItems.setText(itemsText.toString());
 
-        // Ghi chú đơn hàng
         String orderNote = order.getOrderNote();
         if (orderNote != null && !orderNote.isEmpty()) {
             tvOrderNote.setText(orderNote);
@@ -296,6 +282,9 @@ public class OrderReceivedFragment extends Fragment {
             }
 
             void bind(Order order, OnReorderListener reorderListener, OnItemClickListener itemClickListener) {
+                NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
+
                 String orderCode = order.getOrderCode();
                 if (orderCode == null || orderCode.isEmpty()) {
                     String id = order.getId();
@@ -303,34 +292,32 @@ public class OrderReceivedFragment extends Fragment {
                 }
                 tvOrderId.setText("Mã: #" + orderCode);
 
-                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-                long createdAt = order.getCreatedAt();
-                if (createdAt > 0) {
-                    tvOrderDate.setText(sdf.format(new java.util.Date(createdAt)));
+                if (order.getCreatedAt() > 0) {
+                    tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
                 } else {
                     tvOrderDate.setText("Đang cập nhật");
                 }
 
-                // DÙNG HELPER ĐỂ LẤY TÊN NHÀ HÀNG
-                tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+                tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
+                tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
                 StringBuilder itemsText = new StringBuilder();
                 if (order.getItems() != null) {
                     for (Map<String, Object> item : order.getItems()) {
-                        String name = item.get("name") != null ? item.get("name").toString() : "Món ăn";
-                        int quantity = ((Number) item.get("quantity")).intValue();
-                        itemsText.append("• ").append(name).append(" x").append(quantity);
+                        String name = (String) item.get("name");
+                        long quantity = 1;
+                        Object qtyObj = item.get("quantity");
+                        if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                        else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                        itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
 
-                        // Hiển thị ghi chú
                         String note = (String) item.get("note");
                         if (note != null && !note.isEmpty()) {
-                            itemsText.append("\n  📝 ").append(note);
+                            itemsText.append("  📝 ").append(note).append("\n");
                         }
-                        itemsText.append("\n");
                     }
                 }
                 tvFoodItems.setText(itemsText.toString());
-                tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
 
                 btnReorder.setOnClickListener(v -> reorderListener.onReorder(order));
                 itemView.setOnClickListener(v -> itemClickListener.onItemClick(order));

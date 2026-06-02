@@ -12,6 +12,7 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
@@ -48,16 +49,17 @@ public class CheckoutActivity extends AppCompatActivity {
     private boolean isProcessing = false;
 
     // Map ánh xạ restaurantId -> tên nhà hàng
-    private static final Map<String, String> RESTAURANT_NAME_MAP = new HashMap<>();
+    private static final Map<String, String> RESTAURANT_MAP = new HashMap<>();
     static {
-        RESTAURANT_NAME_MAP.put("pho_thin", "Phở Thìn");
-        RESTAURANT_NAME_MAP.put("kfc", "KFC");
-        RESTAURANT_NAME_MAP.put("cong_ca_phe", "Cộng Cà Phê");
-        RESTAURANT_NAME_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
-        RESTAURANT_NAME_MAP.put("pizza_hut", "Pizza Hut");
-        RESTAURANT_NAME_MAP.put("lotteria", "Lotteria");
-        RESTAURANT_NAME_MAP.put("ding_tea", "Ding Tea");
-        RESTAURANT_NAME_MAP.put("mcdonalds", "McDonald's");
+        RESTAURANT_MAP.put("pho_thin", "Phở Thìn");
+        RESTAURANT_MAP.put("kfc", "KFC");
+        RESTAURANT_MAP.put("cong_ca_phe", "Cộng Cà Phê");
+        RESTAURANT_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
+        RESTAURANT_MAP.put("pizza_hut", "Pizza Hut");
+        RESTAURANT_MAP.put("lotteria", "Lotteria");
+        RESTAURANT_MAP.put("ding_tea", "Ding Tea");
+        RESTAURANT_MAP.put("mcdonalds", "McDonald's");
+        RESTAURANT_MAP.put("bo_to_quan", "Bò Tơ Quán");
     }
 
     @Override
@@ -238,13 +240,11 @@ public class CheckoutActivity extends AppCompatActivity {
                 .apply();
     }
 
-    // Lấy tên nhà hàng từ restaurantId
     private String getRestaurantNameFromId(String restaurantId) {
-        if (restaurantId == null || restaurantId.isEmpty()) {
-            return "Nhà hàng";
-        }
-        String name = RESTAURANT_NAME_MAP.get(restaurantId.toLowerCase());
-        return name != null ? name : "Nhà hàng";
+        if (restaurantId == null) return null;
+        String name = RESTAURANT_MAP.get(restaurantId.toLowerCase());
+        if (name != null) return name;
+        return null;
     }
 
     private void processOrder() {
@@ -318,26 +318,26 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setUserId(userId);
         order.setOrderCode("ORD" + System.currentTimeMillis());
 
-        // LẤY TÊN NHÀ HÀNG ĐÚNG TỪ CART ITEM
-        String restaurantId = null;
-        String restaurantName = "Nhà hàng";
+        // Lấy thông tin từ cart item đầu tiên
+        String firstRestaurantId = null;
+        String firstRestaurantName = "Nhà hàng";
 
         if (cartItems != null && !cartItems.isEmpty()) {
             CartItem firstItem = cartItems.get(0);
-            restaurantId = firstItem.getRestaurantId();
-            restaurantName = getRestaurantNameFromId(restaurantId);
-
-            // Nếu không có restaurantId hoặc không tìm thấy, dùng tên món (fallback)
-            if (restaurantName == null || restaurantName.equals("Nhà hàng")) {
-                restaurantName = firstItem.getName();
-                if (restaurantName == null || restaurantName.isEmpty()) {
-                    restaurantName = "Nhà hàng";
+            firstRestaurantId = firstItem.getRestaurantId();
+            String nameFromId = getRestaurantNameFromId(firstRestaurantId);
+            if (nameFromId != null) {
+                firstRestaurantName = nameFromId;
+            } else {
+                firstRestaurantName = firstItem.getName();
+                if (firstRestaurantName == null || firstRestaurantName.isEmpty()) {
+                    firstRestaurantName = "Nhà hàng";
                 }
             }
         }
 
-        order.setRestaurantId(restaurantId);
-        order.setRestaurantName(restaurantName);
+        order.setRestaurantId(firstRestaurantId);
+        order.setRestaurantName(firstRestaurantName);
         order.setDeliveryName(name);
         order.setDeliveryPhone(phone);
         order.setDeliveryAddress(address);
@@ -360,6 +360,7 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setCreatedAt(System.currentTimeMillis());
         order.setUpdatedAt(System.currentTimeMillis());
 
+        // Tạo danh sách items với đầy đủ restaurantId
         List<Map<String, Object>> items = new ArrayList<>();
         if (cartItems != null) {
             for (CartItem item : cartItems) {
@@ -370,16 +371,27 @@ public class CheckoutActivity extends AppCompatActivity {
                 map.put("quantity", item.getQuantity());
                 map.put("imageUrl", item.getImageUrl() != null ? item.getImageUrl() : "");
                 map.put("note", item.getNote() != null ? item.getNote() : "");
-                map.put("restaurantId", item.getRestaurantId());
+
+                // QUAN TRỌNG: Lưu restaurantId vào từng item
+                if (item.getRestaurantId() != null && !item.getRestaurantId().isEmpty()) {
+                    map.put("restaurantId", item.getRestaurantId());
+                    String itemRestaurantName = getRestaurantNameFromId(item.getRestaurantId());
+                    map.put("restaurantName", itemRestaurantName != null ? itemRestaurantName : item.getName());
+                } else {
+                    // Fallback: nếu không có restaurantId, dùng tên món
+                    map.put("restaurantId", "");
+                    map.put("restaurantName", item.getName());
+                }
+
                 items.add(map);
             }
         }
         order.setItems(items);
 
         Log.d(TAG, "===== TẠO ĐƠN HÀNG =====");
-        Log.d(TAG, "restaurantId: " + restaurantId);
-        Log.d(TAG, "restaurantName: " + restaurantName);
-        Log.d(TAG, "deliveryFee: " + deliveryFee);
+        Log.d(TAG, "restaurantId: " + firstRestaurantId);
+        Log.d(TAG, "restaurantName: " + firstRestaurantName);
+        Log.d(TAG, "Số lượng items: " + items.size());
 
         repository.createOrder(order, new FirebaseRepository.OnDataLoaded<String>() {
             @Override

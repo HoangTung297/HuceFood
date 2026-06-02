@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RatingBar;
@@ -19,6 +20,7 @@ import com.example.foodorder.adapter.FoodAdapter;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.LoginSessionManager;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
@@ -36,6 +38,7 @@ public class FoodDetailActivity extends AppCompatActivity {
     private TextView tvFoodName, tvPrice, tvRestaurant, tvDescription, tvSoldCount, tvRating;
     private RatingBar ratingBar;
     private Button btnAddToCart, btnViewRestaurant;
+    private EditText etNote;
     private RecyclerView rvSimilarFoods;
 
     private Food currentFood;
@@ -43,7 +46,9 @@ public class FoodDetailActivity extends AppCompatActivity {
     private FoodAdapter similarFoodsAdapter;
     private FirebaseFirestore db;
     private FirebaseRepository repository;
+    private LoginSessionManager sessionManager;
     private String userId = "";
+    private int quantity = 1;
     private boolean isFavorite = false;
     private String favoriteDocId = null;
     private boolean isProcessing = false;
@@ -55,14 +60,12 @@ public class FoodDetailActivity extends AppCompatActivity {
 
         db = FirebaseFirestore.getInstance();
         repository = FirebaseRepository.getInstance();
+        sessionManager = new LoginSessionManager(this);
 
-        if (getSharedPreferences("UserPrefs", MODE_PRIVATE) != null) {
-            userId = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                    .getString("user_id", "");
-            if (userId.isEmpty()) {
-                userId = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                        .getString("user_email", "user123");
-            }
+        userId = sessionManager.getUserId();
+        if (userId == null || userId.isEmpty()) {
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            userId = prefs.getString("user_email", "tung@gmail.com");
         }
 
         initViews();
@@ -86,6 +89,7 @@ public class FoodDetailActivity extends AppCompatActivity {
         ratingBar = findViewById(R.id.ratingBar);
         btnAddToCart = findViewById(R.id.btnAddToCart);
         btnViewRestaurant = findViewById(R.id.btnViewRestaurant);
+        etNote = findViewById(R.id.etNote);
         rvSimilarFoods = findViewById(R.id.rvSimilarFoods);
 
         similarFoodsList = new ArrayList<>();
@@ -112,7 +116,7 @@ public class FoodDetailActivity extends AppCompatActivity {
             tvPrice.setText(formatter.format(currentFood.getPrice()) + "đ");
             tvRestaurant.setText(currentFood.getRestaurantName() != null ? currentFood.getRestaurantName() : "Nhà hàng");
             tvDescription.setText(currentFood.getDescription() != null && !currentFood.getDescription().isEmpty()
-                    ? currentFood.getDescription() : "Chưa có mô tả chi tiết cho món ăn này");
+                    ? currentFood.getDescription() : "Chưa có mô tả chi tiết");
             tvSoldCount.setText("Đã bán: " + currentFood.getSoldCount());
             tvRating.setText(String.format("%.1f", currentFood.getRating()));
             ratingBar.setRating((float) currentFood.getRating());
@@ -128,32 +132,10 @@ public class FoodDetailActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        btnAddToCart.setOnClickListener(v -> {
-            CartItem cartItem = new CartItem();
-            cartItem.setFoodId(currentFood.getId());
-            cartItem.setName(currentFood.getName());
-            cartItem.setPrice(currentFood.getPrice());
-            cartItem.setQuantity(1);
-            // LƯU RESTAURANT_ID VÀO CART
-            cartItem.setRestaurantId(currentFood.getRestaurantId());
-            cartItem.setImageUrl(currentFood.getImageUrl());
-
-            repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
-                @Override
-                public void onSuccess(Void data) {
-                    Toast.makeText(FoodDetailActivity.this, "Đã thêm " + currentFood.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
-                }
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(FoodDetailActivity.this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-
+        btnAddToCart.setOnClickListener(v -> addToCart());
         btnViewRestaurant.setOnClickListener(v -> {
             Intent intent = new Intent(this, RestaurantDetailActivity.class);
             intent.putExtra("restaurantName", currentFood.getRestaurantName());
-            intent.putExtra("restaurantId", currentFood.getRestaurantId());
             startActivity(intent);
         });
 
@@ -167,6 +149,29 @@ public class FoodDetailActivity extends AppCompatActivity {
             } else {
                 updateFavoriteIcon(true);
                 addToFavorites();
+            }
+        });
+    }
+
+    private void addToCart() {
+        CartItem cartItem = new CartItem();
+        cartItem.setFoodId(currentFood.getId());
+        cartItem.setName(currentFood.getName());
+        cartItem.setPrice(currentFood.getPrice());
+        cartItem.setQuantity(quantity);
+        cartItem.setRestaurantId(currentFood.getRestaurantId());
+        cartItem.setImageUrl(currentFood.getImageUrl());
+        cartItem.setNote(etNote != null ? etNote.getText().toString() : "");
+
+        repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                Toast.makeText(FoodDetailActivity.this, "Đã thêm " + currentFood.getName() + " vào giỏ", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+            @Override
+            public void onError(String error) {
+                Toast.makeText(FoodDetailActivity.this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -253,9 +258,7 @@ public class FoodDetailActivity extends AppCompatActivity {
                         updateFavoriteIcon(false);
                     }
                 })
-                .addOnFailureListener(e -> {
-                    updateFavoriteIcon(false);
-                });
+                .addOnFailureListener(e -> updateFavoriteIcon(false));
     }
 
     private void updateFavoriteIcon(boolean isFav) {

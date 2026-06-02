@@ -7,9 +7,9 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import com.example.foodorder.fragment.CartFragment;
-import com.example.foodorder.fragment.FavoriteFragment;  // Import này
+import androidx.viewpager2.widget.ViewPager2;
+import com.example.foodorder.adapter.ViewPagerAdapter;
+import com.example.foodorder.fragment.FavoriteFragment;
 import com.example.foodorder.fragment.HomeFragment;
 import com.example.foodorder.fragment.NotificationFragment;
 import com.example.foodorder.fragment.OrderFragment;
@@ -17,157 +17,124 @@ import com.example.foodorder.fragment.ProfileFragment;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.LoginSessionManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import java.util.ArrayList;
-import java.util.List;
 
 public class HomeActivity extends AppCompatActivity {
 
+    public static final String ACTION_REFRESH_CART = "com.example.foodorder.REFRESH_CART";
+    public static final String ACTION_REFRESH_ORDERS = "com.example.foodorder.REFRESH_ORDERS";
+
+    private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
     private FirebaseRepository repository;
-    private String userId = "user123";
-    private List<CartItem> cartItemsList;
+    private LoginSessionManager sessionManager;
+    private String userId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-        boolean isLoggedIn = prefs.getBoolean("is_logged_in", false);
-
-        if (!isLoggedIn) {
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
-            return;
-        }
-
         setContentView(R.layout.activity_home);
 
         repository = FirebaseRepository.getInstance();
-        cartItemsList = new ArrayList<>();
+        sessionManager = new LoginSessionManager(this);
 
-        userId = prefs.getString("user_id", "user123");
+        userId = sessionManager.getUserId();
+        if (userId == null || userId.isEmpty()) {
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            userId = prefs.getString("user_email", "tung@gmail.com");
+        }
 
+        viewPager = findViewById(R.id.viewPager2);
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
 
-        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                Fragment selectedFragment = null;
-                int itemId = item.getItemId();
-
-                try {
-                    if (itemId == R.id.nav_home) {
-                        selectedFragment = new HomeFragment();
-                    } else if (itemId == R.id.nav_order) {
-                        selectedFragment = new OrderFragment();
-                    } else if (itemId == R.id.nav_notification) {
-                        selectedFragment = new NotificationFragment();
-                    } else if (itemId == R.id.nav_favorite) {
-                        selectedFragment = new FavoriteFragment();  // Đã import đúng
-                    } else if (itemId == R.id.nav_profile) {
-                        selectedFragment = new ProfileFragment();
-                    }
-
-                    if (selectedFragment != null) {
-                        getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.fragment_container, selectedFragment)
-                                .commit();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Toast.makeText(HomeActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-                return true;
-            }
-        });
-
-        loadCartFromFirebase();
-
-        if (savedInstanceState == null) {
-            bottomNavigationView.setSelectedItemId(R.id.nav_home);
-        }
+        setupViewPager();
+        setupBottomNavigation();
     }
 
-    private void loadCartFromFirebase() {
-        repository.getCart(userId, new FirebaseRepository.OnDataLoaded<List<CartItem>>() {
-            @Override
-            public void onSuccess(List<CartItem> data) {
-                cartItemsList.clear();
-                cartItemsList.addAll(data);
-            }
+    private void setupViewPager() {
+        ViewPagerAdapter adapter = new ViewPagerAdapter(this);
+        adapter.addFragment(new HomeFragment(), "Trang chủ");
+        adapter.addFragment(new OrderFragment(), "Đơn hàng");
+        adapter.addFragment(new NotificationFragment(), "Thông báo");
+        adapter.addFragment(new FavoriteFragment(), "Yêu thích");
+        adapter.addFragment(new ProfileFragment(), "Tôi");
 
+        viewPager.setAdapter(adapter);
+        viewPager.setUserInputEnabled(false);
+
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
-            public void onError(String error) {
-                Toast.makeText(HomeActivity.this, "Lỗi tải giỏ hàng: " + error, Toast.LENGTH_SHORT).show();
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                switch (position) {
+                    case 0:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_home);
+                        break;
+                    case 1:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_order);
+                        break;
+                    case 2:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_notification);
+                        break;
+                    case 3:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_favorite);
+                        break;
+                    case 4:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_profile);
+                        break;
+                }
+            }
+        });
+    }
+
+    private void setupBottomNavigation() {
+        bottomNavigationView.setOnItemSelectedListener(new BottomNavigationView.OnItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int itemId = item.getItemId();
+                if (itemId == R.id.nav_home) {
+                    viewPager.setCurrentItem(0);
+                    return true;
+                } else if (itemId == R.id.nav_order) {
+                    viewPager.setCurrentItem(1);
+                    return true;
+                } else if (itemId == R.id.nav_notification) {
+                    viewPager.setCurrentItem(2);
+                    return true;
+                } else if (itemId == R.id.nav_favorite) {
+                    viewPager.setCurrentItem(3);
+                    return true;
+                } else if (itemId == R.id.nav_profile) {
+                    viewPager.setCurrentItem(4);
+                    return true;
+                }
+                return false;
             }
         });
     }
 
     public void addToCart(Food food) {
+        if (userId == null || userId.isEmpty()) {
+            userId = "tung@gmail.com";
+        }
+
         CartItem cartItem = new CartItem();
         cartItem.setFoodId(food.getId());
         cartItem.setName(food.getName());
         cartItem.setPrice(food.getPrice());
         cartItem.setQuantity(1);
-        cartItem.setRestaurantId(food.getRestaurantName());
+        cartItem.setRestaurantId(food.getRestaurantId());
         cartItem.setImageUrl(food.getImageUrl());
 
         repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
             @Override
             public void onSuccess(Void data) {
-                loadCartFromFirebase();
-                Toast.makeText(HomeActivity.this, "Đã thêm " + food.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
-            }
+                Toast.makeText(HomeActivity.this, "Đã thêm " + food.getName() + " vào giỏ", Toast.LENGTH_SHORT).show();
 
-            @Override
-            public void onError(String error) {
-                Toast.makeText(HomeActivity.this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    public List<CartItem> getCartList() {
-        return new ArrayList<>(cartItemsList);
-    }
-
-    public void removeFromCart(String foodId) {
-        repository.removeFromCart(userId, foodId, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                loadCartFromFirebase();
-                Toast.makeText(HomeActivity.this, "Đã xóa khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onError(String error) {
-                Toast.makeText(HomeActivity.this, "Lỗi xóa: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    public void updateCartItem(CartItem item) {
-        repository.updateCartItem(userId, item, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                loadCartFromFirebase();
-            }
-
-            @Override
-            public void onError(String error) {
-                Toast.makeText(HomeActivity.this, "Lỗi cập nhật: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    public void clearCart() {
-        repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                cartItemsList.clear();
-                Toast.makeText(HomeActivity.this, "Đã xóa giỏ hàng", Toast.LENGTH_SHORT).show();
+                // Gửi broadcast để refresh CartFragment
+                Intent intent = new Intent(ACTION_REFRESH_CART);
+                sendBroadcast(intent);
             }
 
             @Override
@@ -178,20 +145,45 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     public void navigateToProfile() {
-        if (bottomNavigationView != null) {
-            bottomNavigationView.setSelectedItemId(R.id.nav_profile);
+        viewPager.setCurrentItem(4);
+        bottomNavigationView.setSelectedItemId(R.id.nav_profile);
+    }
+
+    public void navigateToHome() {
+        viewPager.setCurrentItem(0);
+        bottomNavigationView.setSelectedItemId(R.id.nav_home);
+    }
+
+    public void navigateToCart() {
+        viewPager.setCurrentItem(1);
+        bottomNavigationView.setSelectedItemId(R.id.nav_order);
+
+        OrderFragment orderFragment = (OrderFragment) getSupportFragmentManager()
+                .findFragmentByTag("f1");
+        if (orderFragment != null) {
+            orderFragment.switchToCartTab();
         }
     }
 
     public void navigateToOrderHistory() {
-        if (bottomNavigationView != null) {
-            bottomNavigationView.setSelectedItemId(R.id.nav_order);
+        viewPager.setCurrentItem(1);
+        bottomNavigationView.setSelectedItemId(R.id.nav_order);
+
+        OrderFragment orderFragment = (OrderFragment) getSupportFragmentManager()
+                .findFragmentByTag("f1");
+        if (orderFragment != null) {
+            orderFragment.switchToHistoryTab();
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        loadCartFromFirebase();
+    public void navigateToDelivering() {
+        viewPager.setCurrentItem(1);
+        bottomNavigationView.setSelectedItemId(R.id.nav_order);
+
+        OrderFragment orderFragment = (OrderFragment) getSupportFragmentManager()
+                .findFragmentByTag("f1");
+        if (orderFragment != null) {
+            orderFragment.switchToDeliveringTab();
+        }
     }
 }

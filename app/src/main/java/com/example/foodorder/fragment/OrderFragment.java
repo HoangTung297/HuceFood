@@ -19,6 +19,12 @@ public class OrderFragment extends Fragment {
     private ViewPager2 viewPager;
     private OrderPagerAdapter pagerAdapter;
 
+    public static final int TAB_CART = 0;
+    public static final int TAB_DELIVERING = 1;
+    public static final int TAB_RECEIVED = 2;
+    public static final int TAB_RATING = 3;
+    public static final int TAB_HISTORY = 4;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -34,7 +40,6 @@ public class OrderFragment extends Fragment {
 
     private void setupViewPager() {
         pagerAdapter = new OrderPagerAdapter(requireActivity());
-
         pagerAdapter.addFragment(new CartFragment(), "🛒 Giỏ hàng");
         pagerAdapter.addFragment(new DeliveringFragment(), "📦 Đang giao");
         pagerAdapter.addFragment(new OrderReceivedFragment(), "✅ Đã nhận");
@@ -50,40 +55,26 @@ public class OrderFragment extends Fragment {
 
     public void switchToCartTab() {
         if (viewPager != null) {
-            viewPager.setCurrentItem(0, true);
+            viewPager.setCurrentItem(TAB_CART, true);
         }
     }
 
-    // THÊM METHOD NÀY
-    public void refreshAllTabs() {
-        // Refresh CartFragment
+    public void switchToDeliveringTab() {
+        if (viewPager != null) {
+            viewPager.setCurrentItem(TAB_DELIVERING, true);
+        }
+    }
+
+    public void switchToHistoryTab() {
+        if (viewPager != null) {
+            viewPager.setCurrentItem(TAB_HISTORY, true);
+        }
+    }
+
+    public void refreshCartFragment() {
         Fragment cartFragment = getChildFragmentManager().findFragmentByTag("f0");
         if (cartFragment instanceof CartFragment) {
             ((CartFragment) cartFragment).refreshData();
-        }
-
-        // Refresh DeliveringFragment
-        Fragment deliveringFragment = getChildFragmentManager().findFragmentByTag("f1");
-        if (deliveringFragment instanceof DeliveringFragment) {
-            ((DeliveringFragment) deliveringFragment).refreshData();
-        }
-
-        // Refresh OrderReceivedFragment
-        Fragment receivedFragment = getChildFragmentManager().findFragmentByTag("f2");
-        if (receivedFragment instanceof OrderReceivedFragment) {
-            ((OrderReceivedFragment) receivedFragment).refreshData();
-        }
-
-        // Refresh RatingFragment
-        Fragment ratingFragment = getChildFragmentManager().findFragmentByTag("f3");
-        if (ratingFragment instanceof RatingFragment) {
-            ((RatingFragment) ratingFragment).refreshData();
-        }
-
-        // Refresh OrderHistoryFragment
-        Fragment historyFragment = getChildFragmentManager().findFragmentByTag("f4");
-        if (historyFragment instanceof OrderHistoryFragment) {
-            ((OrderHistoryFragment) historyFragment).refreshData();
         }
     }
 }

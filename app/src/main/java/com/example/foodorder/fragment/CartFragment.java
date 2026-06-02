@@ -1,9 +1,12 @@
 package com.example.foodorder.fragment;
 
-import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,6 +33,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import androidx.annotation.Nullable;
 import java.util.List;
 import java.util.Locale;
 
@@ -57,6 +61,27 @@ public class CartFragment extends Fragment {
     private double discount = 0;
     private double deliveryFee = 15000;
     private boolean isApplyingVoucher = false;
+
+    // BroadcastReceiver để refresh khi có món mới được thêm
+    private final BroadcastReceiver refreshReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (HomeActivity.ACTION_REFRESH_CART.equals(intent.getAction())) {
+                Log.d(TAG, "Received refresh broadcast, reloading cart...");
+                refreshData();
+            }
+        }
+    };
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Đăng ký BroadcastReceiver
+        IntentFilter filter = new IntentFilter(HomeActivity.ACTION_REFRESH_CART);
+        if (getContext() != null) {
+            getContext().registerReceiver(refreshReceiver, filter);
+        }
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -99,14 +124,8 @@ public class CartFragment extends Fragment {
         btnCheckout.setOnClickListener(v -> showCheckoutDialog());
 
         btnGoShopping.setOnClickListener(v -> {
-            if (getActivity() != null) {
-                BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottomNavigationView);
-                if (bottomNav != null) {
-                    bottomNav.setSelectedItemId(R.id.nav_home);
-                }
-                getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, new HomeFragment())
-                        .commit();
+            if (getActivity() instanceof HomeActivity) {
+                ((HomeActivity) getActivity()).navigateToHome();
             }
         });
     }
@@ -330,11 +349,6 @@ public class CartFragment extends Fragment {
         double subtotal = 0;
         for (CartItem item : cartItems) subtotal += item.getTotalPrice();
 
-        Log.d(TAG, "===== ÁP DỤNG VOUCHER =====");
-        Log.d(TAG, "Voucher code: " + voucher.getCode());
-        Log.d(TAG, "Voucher type: " + voucher.getDiscountType());
-        Log.d(TAG, "deliveryFee trước khi áp dụng: " + deliveryFee);
-
         if ("percent".equals(voucher.getDiscountType())) {
             discount = subtotal * voucher.getDiscountValue() / 100;
             if (voucher.getDiscountValue() == 50 && discount > 100000) {
@@ -344,7 +358,6 @@ public class CartFragment extends Fragment {
         } else if ("freeship".equals(voucher.getDiscountType())) {
             deliveryFee = 0;
             discount = 0;
-            Log.d(TAG, "FREESHIP: deliveryFee đã set = " + deliveryFee);
         } else {
             discount = voucher.getDiscountValue();
             deliveryFee = ShippingFeeHelper.getDefaultFee();
@@ -355,9 +368,6 @@ public class CartFragment extends Fragment {
 
         selectedVoucher = voucher;
         selectedVoucherCode = voucher.getCode();
-
-        Log.d(TAG, "deliveryFee sau khi áp dụng: " + deliveryFee);
-        Log.d(TAG, "discount: " + discount);
 
         calculateTotals();
 
@@ -427,12 +437,6 @@ public class CartFragment extends Fragment {
         tvDiscount.setText("-" + f.format(discount) + "đ");
         tvFinalTotal.setText(f.format(finalTotal) + "đ");
 
-        Log.d(TAG, "===== CALCULATE TOTALS =====");
-        Log.d(TAG, "subtotal: " + subtotal);
-        Log.d(TAG, "deliveryFee: " + deliveryFee);
-        Log.d(TAG, "discount: " + discount);
-        Log.d(TAG, "finalTotal: " + finalTotal);
-
         if (selectedVoucherCode != null) {
             tvVoucherApplied.setVisibility(View.VISIBLE);
 
@@ -471,13 +475,6 @@ public class CartFragment extends Fragment {
 
         double finalTotal = subtotal + deliveryFee - discount;
 
-        Log.d(TAG, "===== GỬI SANG CHECKOUT ACTIVITY =====");
-        Log.d(TAG, "subtotal: " + subtotal);
-        Log.d(TAG, "deliveryFee: " + deliveryFee);
-        Log.d(TAG, "discount: " + discount);
-        Log.d(TAG, "finalTotal: " + finalTotal);
-        Log.d(TAG, "selectedVoucherCode: " + selectedVoucherCode);
-
         Intent intent = new Intent(getActivity(), CheckoutActivity.class);
         intent.putExtra("totalAmount", subtotal);
         intent.putExtra("finalTotal", finalTotal);
@@ -509,5 +506,18 @@ public class CartFragment extends Fragment {
     public void onResume() {
         super.onResume();
         loadCart();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Hủy đăng ký BroadcastReceiver
+        if (getContext() != null) {
+            try {
+                getContext().unregisterReceiver(refreshReceiver);
+            } catch (IllegalArgumentException e) {
+                // Receiver not registered
+            }
+        }
     }
 }

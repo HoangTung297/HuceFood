@@ -88,7 +88,7 @@ public class FavoriteFoodFragment extends Fragment {
 
         isLoading = true;
 
-        // Dùng Map để gộp theo foodId (tránh trùng)
+        // Map để lưu food theo foodId
         Map<String, Food> foodMap = new HashMap<>();
 
         db.collection("favorites")
@@ -106,10 +106,8 @@ public class FavoriteFoodFragment extends Fragment {
                         Double rating = doc.getDouble("rating");
                         String favoriteId = doc.getId();
 
-                        // Chỉ lấy document mới nhất
-                        if (!foodMap.containsKey(foodId) ||
-                                favoriteId.compareTo(foodMap.get(foodId).getFavoriteId()) > 0) {
-
+                        // Nếu chưa có trong map thì thêm vào
+                        if (!foodMap.containsKey(foodId)) {
                             Food food = new Food(foodId,
                                     foodName != null ? foodName : "Món ăn",
                                     "",
@@ -145,16 +143,17 @@ public class FavoriteFoodFragment extends Fragment {
     }
 
     private void removeFromFavorites(Food food) {
-        if (food.getFavoriteId() != null && !food.getFavoriteId().isEmpty()) {
-            String favoriteId = food.getFavoriteId();
+        String favoriteId = food.getFavoriteId();
+        if (favoriteId != null && !favoriteId.isEmpty()) {
             String foodName = food.getName();
 
             db.collection("favorites").document(favoriteId).delete()
                     .addOnSuccessListener(aVoid -> {
-                        // Xóa bằng cách tìm theo favoriteId (không dùng position)
+                        // Tìm và xóa khỏi danh sách
                         int indexToRemove = -1;
                         for (int i = 0; i < favoriteList.size(); i++) {
-                            if (favoriteList.get(i).getFavoriteId().equals(favoriteId)) {
+                            if (favoriteList.get(i).getFavoriteId() != null &&
+                                    favoriteList.get(i).getFavoriteId().equals(favoriteId)) {
                                 indexToRemove = i;
                                 break;
                             }
@@ -165,7 +164,6 @@ public class FavoriteFoodFragment extends Fragment {
                             adapter.notifyItemRemoved(indexToRemove);
                             Toast.makeText(getContext(), "Đã xóa " + foodName + " khỏi yêu thích", Toast.LENGTH_SHORT).show();
                         } else {
-                            // Nếu không tìm thấy, reload lại
                             loadFavorites();
                         }
 
@@ -178,7 +176,6 @@ public class FavoriteFoodFragment extends Fragment {
                         Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
         } else {
-            // Fallback: Nếu không có favoriteId, reload lại toàn bộ
             loadFavorites();
         }
     }

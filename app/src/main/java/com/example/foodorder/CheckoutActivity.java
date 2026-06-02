@@ -12,13 +12,11 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.LoginSessionManager;
-import com.example.foodorder.utils.ShippingFeeHelper;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -29,9 +27,11 @@ import java.util.Map;
 
 public class CheckoutActivity extends AppCompatActivity {
 
+    private static final String TAG = "CHECKOUT";
+
     private TextView tvOrderTotal, tvWalletBalance;
     private RadioGroup rgPayment;
-    private RadioButton rbCOD, rbBankTransfer, rbWallet;
+    private RadioButton rbCOD, rbWallet;
     private LinearLayout layoutWalletInfo;
     private EditText etDeliveryName, etDeliveryPhone, etDeliveryAddress, etOrderNote;
     private Button btnConfirmOrder, btnCancelOrder;
@@ -45,8 +45,20 @@ public class CheckoutActivity extends AppCompatActivity {
     private double discountAmount = 0;
     private List<CartItem> cartItems;
     private String selectedPaymentMethod = "COD";
-    private static final String TAG = "CheckoutActivity";
     private boolean isProcessing = false;
+
+    // Map ánh xạ restaurantId -> tên nhà hàng
+    private static final Map<String, String> RESTAURANT_NAME_MAP = new HashMap<>();
+    static {
+        RESTAURANT_NAME_MAP.put("pho_thin", "Phở Thìn");
+        RESTAURANT_NAME_MAP.put("kfc", "KFC");
+        RESTAURANT_NAME_MAP.put("cong_ca_phe", "Cộng Cà Phê");
+        RESTAURANT_NAME_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
+        RESTAURANT_NAME_MAP.put("pizza_hut", "Pizza Hut");
+        RESTAURANT_NAME_MAP.put("lotteria", "Lotteria");
+        RESTAURANT_NAME_MAP.put("ding_tea", "Ding Tea");
+        RESTAURANT_NAME_MAP.put("mcdonalds", "McDonald's");
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +82,6 @@ public class CheckoutActivity extends AppCompatActivity {
         tvWalletBalance = findViewById(R.id.tvWalletBalance);
         rgPayment = findViewById(R.id.rgPayment);
         rbCOD = findViewById(R.id.rbCOD);
-        rbBankTransfer = findViewById(R.id.rbBankTransfer);
         rbWallet = findViewById(R.id.rbWallet);
         layoutWalletInfo = findViewById(R.id.layoutWalletInfo);
         etDeliveryName = findViewById(R.id.etDeliveryName);
@@ -91,19 +102,38 @@ public class CheckoutActivity extends AppCompatActivity {
             cartItems = new ArrayList<>();
         }
 
-        // Nếu không có phí ship từ Intent, tính theo địa chỉ
-        if (deliveryFee == 0) {
-            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-            String address = prefs.getString("delivery_address", "");
-            deliveryFee = ShippingFeeHelper.getShippingFee(address);
-        }
-
         totalAmount = subtotalAmount + deliveryFee - discountAmount;
 
-        Log.d(TAG, "Tiền món: " + formatCurrency(subtotalAmount));
-        Log.d(TAG, "Phí ship: " + formatCurrency(deliveryFee));
-        Log.d(TAG, "Giảm giá: -" + formatCurrency(discountAmount));
-        Log.d(TAG, "Tổng thanh toán: " + formatCurrency(totalAmount));
+        updateOrderItemsDisplay();
+    }
+
+    private void updateOrderItemsDisplay() {
+        TextView tvOrderItems = findViewById(R.id.tvOrderItems);
+        TextView tvOrderSubtotal = findViewById(R.id.tvOrderSubtotal);
+        TextView tvOrderDelivery = findViewById(R.id.tvOrderDelivery);
+        TextView tvOrderDiscount = findViewById(R.id.tvOrderDiscount);
+
+        if (tvOrderItems != null) {
+            StringBuilder itemsText = new StringBuilder();
+            for (CartItem item : cartItems) {
+                itemsText.append("• ").append(item.getName()).append(" x").append(item.getQuantity());
+                if (item.getNote() != null && !item.getNote().isEmpty()) {
+                    itemsText.append("\n  📝 ").append(item.getNote());
+                }
+                itemsText.append("\n");
+            }
+            tvOrderItems.setText(itemsText.toString());
+        }
+
+        if (tvOrderSubtotal != null) {
+            tvOrderSubtotal.setText(formatCurrency(subtotalAmount));
+        }
+        if (tvOrderDelivery != null) {
+            tvOrderDelivery.setText(formatCurrency(deliveryFee));
+        }
+        if (tvOrderDiscount != null) {
+            tvOrderDiscount.setText("-" + formatCurrency(discountAmount));
+        }
     }
 
     private void updateOrderTotalDisplay() {
@@ -124,32 +154,6 @@ public class CheckoutActivity extends AppCompatActivity {
         if (!savedName.isEmpty()) etDeliveryName.setText(savedName);
         if (!savedPhone.isEmpty()) etDeliveryPhone.setText(savedPhone);
         if (!savedAddress.isEmpty()) etDeliveryAddress.setText(savedAddress);
-
-        if (savedName.isEmpty() || savedPhone.isEmpty()) {
-            String userId = getCurrentUserId();
-            FirebaseFirestore.getInstance().collection("users").document(userId).get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        if (documentSnapshot.exists()) {
-                            String name = documentSnapshot.getString("name");
-                            String phone = documentSnapshot.getString("phone");
-                            String address = documentSnapshot.getString("address");
-
-                            if (name != null && !name.isEmpty()) {
-                                etDeliveryName.setText(name);
-                                prefs.edit().putString("user_name", name).apply();
-                            }
-                            if (phone != null && !phone.isEmpty()) {
-                                etDeliveryPhone.setText(phone);
-                                prefs.edit().putString("user_phone", phone).apply();
-                            }
-                            if (address != null && !address.isEmpty()) {
-                                etDeliveryAddress.setText(address);
-                                prefs.edit().putString("user_address", address).apply();
-                                prefs.edit().putString("delivery_address", address).apply();
-                            }
-                        }
-                    });
-        }
     }
 
     private void loadWalletFromFirestore() {
@@ -179,8 +183,8 @@ public class CheckoutActivity extends AppCompatActivity {
 
     private void updateWalletUI() {
         String balanceText = formatCurrency(walletBalance);
-        tvWalletBalance.setText("Số dư ví: " + balanceText);
-        rbWallet.setText("💳 Thanh toán bằng ví (Số dư: " + balanceText + ")");
+        tvWalletBalance.setText("Số dư: " + balanceText);
+        rbWallet.setText("💳 Thanh toán bằng ví");
     }
 
     private String getCurrentUserId() {
@@ -211,10 +215,6 @@ public class CheckoutActivity extends AppCompatActivity {
             if (checkedId == R.id.rbCOD) {
                 selectedPaymentMethod = "COD";
                 layoutWalletInfo.setVisibility(View.GONE);
-            } else if (checkedId == R.id.rbBankTransfer) {
-                selectedPaymentMethod = "bank_transfer";
-                layoutWalletInfo.setVisibility(View.GONE);
-                showBankTransferDialog();
             } else if (checkedId == R.id.rbWallet) {
                 selectedPaymentMethod = "wallet";
                 layoutWalletInfo.setVisibility(View.VISIBLE);
@@ -227,18 +227,6 @@ public class CheckoutActivity extends AppCompatActivity {
         });
     }
 
-    private void showBankTransferDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Chuyển khoản ngân hàng")
-                .setMessage("Vui lòng chuyển khoản đến:\n\n" +
-                        "Ngân hàng: Vietcombank\n" +
-                        "Số TK: 123456789\n" +
-                        "Chủ TK: FOOD ORDER APP\n" +
-                        "Nội dung: " + System.currentTimeMillis())
-                .setPositiveButton("OK", null)
-                .show();
-    }
-
     private void saveUserInfo(String name, String phone, String address) {
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         prefs.edit()
@@ -248,6 +236,15 @@ public class CheckoutActivity extends AppCompatActivity {
                 .putString("user_address", address)
                 .putString("delivery_address", address)
                 .apply();
+    }
+
+    // Lấy tên nhà hàng từ restaurantId
+    private String getRestaurantNameFromId(String restaurantId) {
+        if (restaurantId == null || restaurantId.isEmpty()) {
+            return "Nhà hàng";
+        }
+        String name = RESTAURANT_NAME_MAP.get(restaurantId.toLowerCase());
+        return name != null ? name : "Nhà hàng";
     }
 
     private void processOrder() {
@@ -306,13 +303,11 @@ public class CheckoutActivity extends AppCompatActivity {
 
     private String getPaymentMethodCode() {
         if (selectedPaymentMethod.equals("COD")) return "COD";
-        if (selectedPaymentMethod.equals("bank_transfer")) return "Banking";
         return "Wallet";
     }
 
     private String getPaymentMethodText() {
         if (selectedPaymentMethod.equals("COD")) return "Tiền mặt khi nhận hàng";
-        if (selectedPaymentMethod.equals("bank_transfer")) return "Chuyển khoản ngân hàng";
         return "Ví điện tử";
     }
 
@@ -323,14 +318,25 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setUserId(userId);
         order.setOrderCode("ORD" + System.currentTimeMillis());
 
+        // LẤY TÊN NHÀ HÀNG ĐÚNG TỪ CART ITEM
+        String restaurantId = null;
         String restaurantName = "Nhà hàng";
-        if (cartItems != null && !cartItems.isEmpty() && cartItems.get(0) != null) {
-            restaurantName = cartItems.get(0).getName();
-            if (restaurantName == null || restaurantName.isEmpty()) {
-                restaurantName = "Nhà hàng";
+
+        if (cartItems != null && !cartItems.isEmpty()) {
+            CartItem firstItem = cartItems.get(0);
+            restaurantId = firstItem.getRestaurantId();
+            restaurantName = getRestaurantNameFromId(restaurantId);
+
+            // Nếu không có restaurantId hoặc không tìm thấy, dùng tên món (fallback)
+            if (restaurantName == null || restaurantName.equals("Nhà hàng")) {
+                restaurantName = firstItem.getName();
+                if (restaurantName == null || restaurantName.isEmpty()) {
+                    restaurantName = "Nhà hàng";
+                }
             }
         }
 
+        order.setRestaurantId(restaurantId);
         order.setRestaurantName(restaurantName);
         order.setDeliveryName(name);
         order.setDeliveryPhone(phone);
@@ -364,24 +370,27 @@ public class CheckoutActivity extends AppCompatActivity {
                 map.put("quantity", item.getQuantity());
                 map.put("imageUrl", item.getImageUrl() != null ? item.getImageUrl() : "");
                 map.put("note", item.getNote() != null ? item.getNote() : "");
+                map.put("restaurantId", item.getRestaurantId());
                 items.add(map);
             }
         }
         order.setItems(items);
 
-        final double finalTotalAmount = totalAmount;
-        final String finalPaymentMethodText = getPaymentMethodText();
+        Log.d(TAG, "===== TẠO ĐƠN HÀNG =====");
+        Log.d(TAG, "restaurantId: " + restaurantId);
+        Log.d(TAG, "restaurantName: " + restaurantName);
+        Log.d(TAG, "deliveryFee: " + deliveryFee);
 
         repository.createOrder(order, new FirebaseRepository.OnDataLoaded<String>() {
             @Override
             public void onSuccess(String orderId) {
                 String message = "Đặt hàng thành công!\n" +
-                        "Tổng thanh toán: " + formatCurrency(finalTotalAmount) + "\n" +
-                        "Phương thức: " + finalPaymentMethodText;
+                        "Tổng thanh toán: " + formatCurrency(totalAmount) + "\n" +
+                        "Phương thức: " + getPaymentMethodText();
 
                 if (isPaid) {
                     message = "✅ Thanh toán thành công!\n" +
-                            "Đã trừ " + formatCurrency(finalTotalAmount) + " từ ví.\n" +
+                            "Đã trừ " + formatCurrency(totalAmount) + " từ ví.\n" +
                             message;
                 }
                 Toast.makeText(CheckoutActivity.this, message, Toast.LENGTH_LONG).show();

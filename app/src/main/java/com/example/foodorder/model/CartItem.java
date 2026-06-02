@@ -9,11 +9,10 @@ public class CartItem implements Serializable {
     private int quantity;
     private String restaurantId;
     private String imageUrl;
-    private String note;  // Thêm field ghi chú
+    private String note;
 
     public CartItem() {}
 
-    // Getters
     public String getFoodId() { return foodId; }
     public String getName() { return name; }
     public double getPrice() { return price; }
@@ -22,7 +21,6 @@ public class CartItem implements Serializable {
     public String getImageUrl() { return imageUrl; }
     public String getNote() { return note; }
 
-    // Setters
     public void setFoodId(String foodId) { this.foodId = foodId; }
     public void setName(String name) { this.name = name; }
     public void setPrice(double price) { this.price = price; }

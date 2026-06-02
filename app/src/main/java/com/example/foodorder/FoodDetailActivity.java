@@ -110,7 +110,7 @@ public class FoodDetailActivity extends AppCompatActivity {
 
             tvFoodName.setText(currentFood.getName());
             tvPrice.setText(formatter.format(currentFood.getPrice()) + "đ");
-            tvRestaurant.setText(currentFood.getRestaurantName());
+            tvRestaurant.setText(currentFood.getRestaurantName() != null ? currentFood.getRestaurantName() : "Nhà hàng");
             tvDescription.setText(currentFood.getDescription() != null && !currentFood.getDescription().isEmpty()
                     ? currentFood.getDescription() : "Chưa có mô tả chi tiết cho món ăn này");
             tvSoldCount.setText("Đã bán: " + currentFood.getSoldCount());
@@ -134,7 +134,8 @@ public class FoodDetailActivity extends AppCompatActivity {
             cartItem.setName(currentFood.getName());
             cartItem.setPrice(currentFood.getPrice());
             cartItem.setQuantity(1);
-            cartItem.setRestaurantId(currentFood.getRestaurantName());
+            // LƯU RESTAURANT_ID VÀO CART
+            cartItem.setRestaurantId(currentFood.getRestaurantId());
             cartItem.setImageUrl(currentFood.getImageUrl());
 
             repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
@@ -152,24 +153,19 @@ public class FoodDetailActivity extends AppCompatActivity {
         btnViewRestaurant.setOnClickListener(v -> {
             Intent intent = new Intent(this, RestaurantDetailActivity.class);
             intent.putExtra("restaurantName", currentFood.getRestaurantName());
+            intent.putExtra("restaurantId", currentFood.getRestaurantId());
             startActivity(intent);
         });
 
-        // TỐI ƯU: Cập nhật UI ngay lập tức
         ivFavorite.setOnClickListener(v -> {
             if (isProcessing) return;
             isProcessing = true;
 
-            // Đảo trạng thái UI ngay lập tức
             if (isFavorite) {
-                // UI: chuyển sang trắng ngay
                 updateFavoriteIcon(false);
-                // Gọi API xóa
                 removeFromFavorites();
             } else {
-                // UI: chuyển sang đỏ ngay
                 updateFavoriteIcon(true);
-                // Gọi API thêm
                 addToFavorites();
             }
         });
@@ -187,7 +183,7 @@ public class FoodDetailActivity extends AppCompatActivity {
         cartItem.setName(food.getName());
         cartItem.setPrice(food.getPrice());
         cartItem.setQuantity(1);
-        cartItem.setRestaurantId(food.getRestaurantName());
+        cartItem.setRestaurantId(food.getRestaurantId());
         cartItem.setImageUrl(food.getImageUrl());
 
         repository.addToCart(userId, cartItem, new FirebaseRepository.OnDataLoaded<Void>() {
@@ -222,9 +218,13 @@ public class FoodDetailActivity extends AppCompatActivity {
                             String restaurantName = doc.getString("restaurant");
                             if (restaurantName == null) restaurantName = "Nhà hàng";
 
+                            String restaurantId = doc.getString("restaurantId");
+                            if (restaurantId == null) restaurantId = "";
+
                             Food food = new Food(doc.getId(), name, "", price, "", "");
                             food.setImageUrl(imageUrl);
                             food.setRestaurantName(restaurantName);
+                            food.setRestaurantId(restaurantId);
                             similarFoodsList.add(food);
                         }
                     }
@@ -268,7 +268,6 @@ public class FoodDetailActivity extends AppCompatActivity {
         }
     }
 
-    // TỐI ƯU: Thêm nhanh, không cần check lại
     private void addToFavorites() {
         if (userId.isEmpty()) {
             Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
@@ -284,6 +283,7 @@ public class FoodDetailActivity extends AppCompatActivity {
         favorite.put("foodDescription", currentFood.getDescription() != null ? currentFood.getDescription() : "");
         favorite.put("foodImage", currentFood.getImageUrl() != null ? currentFood.getImageUrl() : "");
         favorite.put("restaurantName", currentFood.getRestaurantName() != null ? currentFood.getRestaurantName() : "");
+        favorite.put("restaurantId", currentFood.getRestaurantId());
         favorite.put("price", currentFood.getPrice());
         favorite.put("rating", currentFood.getRating());
         favorite.put("addedAt", System.currentTimeMillis());
@@ -293,10 +293,8 @@ public class FoodDetailActivity extends AppCompatActivity {
                     isFavorite = true;
                     favoriteDocId = doc.getId();
                     isProcessing = false;
-                    // Không cần Toast nếu muốn nhanh hơn
                 })
                 .addOnFailureListener(e -> {
-                    // Nếu lỗi, hoàn tác UI
                     updateFavoriteIcon(false);
                     Toast.makeText(FoodDetailActivity.this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     isProcessing = false;
@@ -312,13 +310,11 @@ public class FoodDetailActivity extends AppCompatActivity {
                         isProcessing = false;
                     })
                     .addOnFailureListener(e -> {
-                        // Nếu lỗi, hoàn tác UI
                         updateFavoriteIcon(true);
                         Toast.makeText(FoodDetailActivity.this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         isProcessing = false;
                     });
         } else {
-            // Fallback: tìm và xóa
             db.collection("favorites")
                     .whereEqualTo("userId", userId)
                     .whereEqualTo("foodId", currentFood.getId())

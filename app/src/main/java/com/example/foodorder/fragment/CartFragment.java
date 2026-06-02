@@ -32,11 +32,11 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class CartFragment extends Fragment {
 
     private static final int REQUEST_CHECKOUT = 100;
+    private static final String TAG = "CART_FRAGMENT";
 
     private RecyclerView rvCart;
     private TextView tvTotalPrice, tvDeliveryFee, tvDiscount, tvFinalTotal, tvEmptyCart;
@@ -64,9 +64,7 @@ public class CartFragment extends Fragment {
         initViews(view);
         setupRecyclerView();
 
-        // Hiển thị layout trống ngay lập tức
         showEmptyLayoutImmediately();
-
         loadCart();
         loadUserInfo();
         return view;
@@ -100,15 +98,12 @@ public class CartFragment extends Fragment {
         layoutVoucher.setOnClickListener(v -> showVoucherDialog());
         btnCheckout.setOnClickListener(v -> showCheckoutDialog());
 
-        // SỬA NÚT "MUA SẮM NGAY" - CHUYỂN TAB VỀ HOME
         btnGoShopping.setOnClickListener(v -> {
             if (getActivity() != null) {
-                // Chuyển BottomNavigation về tab Home
                 BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottomNavigationView);
                 if (bottomNav != null) {
                     bottomNav.setSelectedItemId(R.id.nav_home);
                 }
-                // Chuyển fragment
                 getActivity().getSupportFragmentManager().beginTransaction()
                         .replace(R.id.fragment_container, new HomeFragment())
                         .commit();
@@ -166,7 +161,10 @@ public class CartFragment extends Fragment {
             if (address == null || address.isEmpty()) {
                 address = prefs.getString("user_address", "");
             }
-            deliveryFee = ShippingFeeHelper.getShippingFee(address);
+            if (selectedVoucher == null || !"freeship".equals(selectedVoucher.getDiscountType())) {
+                deliveryFee = ShippingFeeHelper.getShippingFee(address);
+                Log.d(TAG, "updateShippingFeeBasedOnAddress - deliveryFee: " + deliveryFee);
+            }
         }
     }
 
@@ -332,16 +330,24 @@ public class CartFragment extends Fragment {
         double subtotal = 0;
         for (CartItem item : cartItems) subtotal += item.getTotalPrice();
 
+        Log.d(TAG, "===== ÁP DỤNG VOUCHER =====");
+        Log.d(TAG, "Voucher code: " + voucher.getCode());
+        Log.d(TAG, "Voucher type: " + voucher.getDiscountType());
+        Log.d(TAG, "deliveryFee trước khi áp dụng: " + deliveryFee);
+
         if ("percent".equals(voucher.getDiscountType())) {
             discount = subtotal * voucher.getDiscountValue() / 100;
             if (voucher.getDiscountValue() == 50 && discount > 100000) {
                 discount = 100000;
             }
+            deliveryFee = ShippingFeeHelper.getDefaultFee();
         } else if ("freeship".equals(voucher.getDiscountType())) {
             deliveryFee = 0;
             discount = 0;
+            Log.d(TAG, "FREESHIP: deliveryFee đã set = " + deliveryFee);
         } else {
             discount = voucher.getDiscountValue();
+            deliveryFee = ShippingFeeHelper.getDefaultFee();
         }
 
         if (discount > subtotal) discount = subtotal;
@@ -349,11 +355,20 @@ public class CartFragment extends Fragment {
 
         selectedVoucher = voucher;
         selectedVoucherCode = voucher.getCode();
+
+        Log.d(TAG, "deliveryFee sau khi áp dụng: " + deliveryFee);
+        Log.d(TAG, "discount: " + discount);
+
         calculateTotals();
 
-        String discountText = "percent".equals(voucher.getDiscountType()) ?
-                (int) voucher.getDiscountValue() + "%" :
-                NumberFormat.getInstance(new Locale("vi", "VN")).format(discount) + "đ";
+        String discountText = "";
+        if ("percent".equals(voucher.getDiscountType())) {
+            discountText = (int) voucher.getDiscountValue() + "%";
+        } else if ("freeship".equals(voucher.getDiscountType())) {
+            discountText = "FREESHIP";
+        } else {
+            discountText = NumberFormat.getInstance(new Locale("vi", "VN")).format(discount) + "đ";
+        }
 
         Toast.makeText(getContext(), "Áp dụng thành công! Giảm " + discountText, Toast.LENGTH_SHORT).show();
     }
@@ -412,10 +427,28 @@ public class CartFragment extends Fragment {
         tvDiscount.setText("-" + f.format(discount) + "đ");
         tvFinalTotal.setText(f.format(finalTotal) + "đ");
 
-        if (discount > 0 && selectedVoucherCode != null) {
+        Log.d(TAG, "===== CALCULATE TOTALS =====");
+        Log.d(TAG, "subtotal: " + subtotal);
+        Log.d(TAG, "deliveryFee: " + deliveryFee);
+        Log.d(TAG, "discount: " + discount);
+        Log.d(TAG, "finalTotal: " + finalTotal);
+
+        if (selectedVoucherCode != null) {
             tvVoucherApplied.setVisibility(View.VISIBLE);
+
+            String discountText = "";
+            if (selectedVoucher != null) {
+                if ("freeship".equals(selectedVoucher.getDiscountType())) {
+                    discountText = "FREESHIP";
+                } else if ("percent".equals(selectedVoucher.getDiscountType())) {
+                    discountText = (int) selectedVoucher.getDiscountValue() + "%";
+                } else {
+                    discountText = f.format(discount) + "đ";
+                }
+            }
+
             tvVoucherApplied.setText("Đã áp dụng: " + selectedVoucherCode);
-            tvVoucherName.setText(selectedVoucherCode + " - Giảm " + f.format(discount) + "đ");
+            tvVoucherName.setText(selectedVoucherCode + " - Giảm " + discountText);
         } else {
             tvVoucherApplied.setVisibility(View.GONE);
             tvVoucherName.setText("Chưa chọn voucher");
@@ -437,6 +470,13 @@ public class CartFragment extends Fragment {
         updateShippingFeeBasedOnAddress();
 
         double finalTotal = subtotal + deliveryFee - discount;
+
+        Log.d(TAG, "===== GỬI SANG CHECKOUT ACTIVITY =====");
+        Log.d(TAG, "subtotal: " + subtotal);
+        Log.d(TAG, "deliveryFee: " + deliveryFee);
+        Log.d(TAG, "discount: " + discount);
+        Log.d(TAG, "finalTotal: " + finalTotal);
+        Log.d(TAG, "selectedVoucherCode: " + selectedVoucherCode);
 
         Intent intent = new Intent(getActivity(), CheckoutActivity.class);
         intent.putExtra("totalAmount", subtotal);

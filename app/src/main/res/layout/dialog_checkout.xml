@@ -43,7 +43,6 @@
                 android:orientation="vertical"
                 android:padding="12dp">
 
-                <!-- Họ tên -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -69,7 +68,6 @@
 
                 </LinearLayout>
 
-                <!-- Số điện thoại -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -96,7 +94,6 @@
 
                 </LinearLayout>
 
-                <!-- Địa chỉ -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -148,12 +145,11 @@
                 android:orientation="vertical"
                 android:padding="12dp">
 
-                <!-- Danh sách món -->
                 <TextView
                     android:id="@+id/tvOrderItems"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Trà sữa trân châu x1"
+                    android:text="• Phở Bò x1"
                     android:textSize="14sp"
                     android:textColor="#333333"
                     android:layout_marginBottom="12dp" />
@@ -164,7 +160,6 @@
                     android:background="#E0E0E0"
                     android:layout_marginVertical="8dp" />
 
-                <!-- Tạm tính -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -183,13 +178,12 @@
                         android:id="@+id/tvOrderSubtotal"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="49,000đ"
+                        android:text="55,000đ"
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
                 </LinearLayout>
 
-                <!-- Phí giao hàng -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -208,13 +202,12 @@
                         android:id="@+id/tvOrderDelivery"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="15,000đ"
+                        android:text="20,000đ"
                         android:textSize="14sp"
                         android:textColor="#757575" />
 
                 </LinearLayout>
 
-                <!-- Giảm giá -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -245,7 +238,6 @@
                     android:background="#E0E0E0"
                     android:layout_marginVertical="8dp" />
 
-                <!-- Thành tiền -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -264,7 +256,7 @@
                         android:id="@+id/tvOrderTotal"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="64,000đ"
+                        android:text="75,000đ"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="#FF5722" />
@@ -307,42 +299,45 @@
                     android:checked="true" />
 
                 <RadioButton
-                    android:id="@+id/rbBankTransfer"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:text="🏦 Chuyển khoản ngân hàng"
-                    android:textSize="14sp" />
-
-                <RadioButton
                     android:id="@+id/rbWallet"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="💳 Thanh toán bằng ví (Số dư: 0đ)"
+                    android:text="💳 Thanh toán bằng ví"
                     android:textSize="14sp" />
 
             </RadioGroup>
 
-            <!-- Thêm LinearLayout hiển thị thông tin ví -->
-            <LinearLayout
-                android:id="@+id/layoutWalletInfo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp"
-                android:background="#F0F0F0"
-                android:visibility="gone"
-                android:layout_marginTop="8dp">
-
-                <TextView
-                    android:id="@+id/tvWalletBalance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Số dư ví: 0đ"
-                    android:textSize="14sp" />
-
-            </LinearLayout>
-
         </androidx.cardview.widget.CardView>
+
+        <!-- ========== THÔNG TIN VÍ - ĐẶT RIÊNG Ở NGOÀI ========== -->
+        <LinearLayout
+            android:id="@+id/layoutWalletInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#F0F0F0"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💰 THÔNG TIN VÍ"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#333333"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvWalletBalance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Số dư: 0đ"
+                android:textSize="14sp"
+                android:textColor="#4CAF50" />
+
+        </LinearLayout>
 
         <!-- ========== GHI CHÚ ========== -->
         <TextView

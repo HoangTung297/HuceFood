@@ -94,8 +94,6 @@ public class DeliveringFragment extends Fragment {
                 orderCode = id != null && id.length() > 8 ? id.substring(0, 8) : id;
             }
             tvOrderId.setText(orderCode);
-
-            // Dùng helper để lấy tên nhà hàng
             tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
 
             if (order.getCreatedAt() > 0) {
@@ -105,10 +103,10 @@ public class DeliveringFragment extends Fragment {
             String paymentMethod = order.getPaymentMethod();
             if ("COD".equals(paymentMethod)) {
                 tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
-            } else if ("Banking".equals(paymentMethod)) {
-                tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
             } else if ("Wallet".equals(paymentMethod)) {
                 tvPaymentMethod.setText("💳 Ví điện tử");
+            } else {
+                tvPaymentMethod.setText(paymentMethod);
             }
 
             tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
@@ -346,23 +344,24 @@ public class DeliveringFragment extends Fragment {
                 if ("pending".equals(status)) {
                     tvStatus.setText("⏳ Chờ xác nhận");
                     tvStatus.setTextColor(0xFFFF9800);
-                    btnReceived.setVisibility(View.GONE);
+                    // HIỂN THỊ CẢ 2 NÚT CHO PENDING
                     btnCancel.setVisibility(View.VISIBLE);
+                    btnReceived.setVisibility(View.VISIBLE);
                 } else if ("delivering".equals(status)) {
                     tvStatus.setText("🚚 Đang giao");
                     tvStatus.setTextColor(0xFF2196F3);
-                    btnReceived.setVisibility(View.VISIBLE);
                     btnCancel.setVisibility(View.VISIBLE);
+                    btnReceived.setVisibility(View.VISIBLE);
                 } else if ("delivered".equals(status)) {
                     tvStatus.setText("✅ Đã giao");
                     tvStatus.setTextColor(0xFF4CAF50);
-                    btnReceived.setVisibility(View.GONE);
                     btnCancel.setVisibility(View.GONE);
+                    btnReceived.setVisibility(View.GONE);
                 } else if ("cancelled".equals(status)) {
                     tvStatus.setText("❌ Đã hủy");
                     tvStatus.setTextColor(0xFFF44336);
-                    btnReceived.setVisibility(View.GONE);
                     btnCancel.setVisibility(View.GONE);
+                    btnReceived.setVisibility(View.GONE);
                 }
 
                 if (order.getCreatedAt() > 0) {
@@ -371,7 +370,6 @@ public class DeliveringFragment extends Fragment {
                     tvOrderDate.setText("Đang cập nhật");
                 }
 
-                // Dùng helper để lấy tên nhà hàng
                 tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
                 tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 

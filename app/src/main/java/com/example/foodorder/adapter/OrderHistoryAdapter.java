@@ -11,15 +11,16 @@ import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapter.ViewHolder> {
 
-    private List<Order> orderList;
-    private OnItemClickListener listener;
-    private OnDeleteClickListener deleteListener;
+    private List<Order> orders;
+    private OnItemClickListener itemClickListener;
+    private OnDeleteClickListener deleteClickListener;
 
     public interface OnItemClickListener {
         void onItemClick(Order order);
@@ -29,15 +30,11 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
         void onDeleteClick(Order order, int position);
     }
 
-    public OrderHistoryAdapter(List<Order> orderList, OnItemClickListener listener) {
-        this.orderList = orderList;
-        this.listener = listener;
-    }
-
-    public OrderHistoryAdapter(List<Order> orderList, OnItemClickListener listener, OnDeleteClickListener deleteListener) {
-        this.orderList = orderList;
-        this.listener = listener;
-        this.deleteListener = deleteListener;
+    public OrderHistoryAdapter(List<Order> orders, OnItemClickListener itemClickListener,
+                               OnDeleteClickListener deleteClickListener) {
+        this.orders = orders;
+        this.itemClickListener = itemClickListener;
+        this.deleteClickListener = deleteClickListener;
     }
 
     @NonNull
@@ -50,22 +47,22 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Order order = orderList.get(position);
-        holder.bind(order, listener, deleteListener, position);
+        Order order = orders.get(position);
+        holder.bind(order, position, itemClickListener, deleteClickListener);
     }
 
     @Override
     public int getItemCount() {
-        return orderList.size();
+        return orders.size();
     }
 
     public void updateList(List<Order> newList) {
-        this.orderList = newList;
+        this.orders = newList;
         notifyDataSetChanged();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvOrderId, tvOrderDate, tvRestaurantName, tvFoodItems, tvTotalPrice, tvStatus;
+        TextView tvOrderId, tvOrderDate, tvRestaurantName, tvFoodItems, tvStatus, tvTotalPrice;
         Button btnDelete;
 
         ViewHolder(@NonNull View itemView) {
@@ -74,48 +71,72 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
             tvOrderDate = itemView.findViewById(R.id.tvOrderDate);
             tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
             tvFoodItems = itemView.findViewById(R.id.tvFoodItems);
-            tvTotalPrice = itemView.findViewById(R.id.tvTotalPrice);
             tvStatus = itemView.findViewById(R.id.tvStatus);
+            tvTotalPrice = itemView.findViewById(R.id.tvTotalPrice);
             btnDelete = itemView.findViewById(R.id.btnDelete);
         }
 
-        void bind(Order order, OnItemClickListener listener, OnDeleteClickListener deleteListener, int position) {
-            NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+        void bind(Order order, int position, OnItemClickListener clickListener,
+                  OnDeleteClickListener deleteListener) {
+            NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
 
-            tvOrderId.setText("Mã: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
+            String orderCode = order.getOrderCode();
+            if (orderCode == null || orderCode.isEmpty()) {
+                String id = order.getId();
+                orderCode = id != null && id.length() > 6 ? id.substring(0, 6) : "ORD";
+            }
+            tvOrderId.setText("Mã: #" + orderCode);
 
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+            if (order.getCreatedAt() > 0) {
+                tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+            } else {
+                tvOrderDate.setText("Đang cập nhật");
+            }
 
-            tvRestaurantName.setText(order.getRestaurantName());
+            tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng");
+            tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
-            StringBuilder itemsText = new StringBuilder();
+            // Hiển thị danh sách món
+            StringBuilder items = new StringBuilder();
             if (order.getItems() != null) {
                 for (Map<String, Object> item : order.getItems()) {
                     String name = (String) item.get("name");
-                    long quantity = ((Number) item.get("quantity")).longValue();
-                    itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
+                    long quantity = 1;
+                    Object qtyObj = item.get("quantity");
+                    if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                    else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                    items.append("• ").append(name).append(" x").append(quantity).append("\n");
                 }
             }
-            tvFoodItems.setText(itemsText.toString());
-            tvTotalPrice.setText(formatter.format(order.getFinalTotal()) + "đ");
-            tvStatus.setText(order.getStatusText());
+            tvFoodItems.setText(items.toString());
 
-            // Nút xóa (chỉ hiển thị nếu đơn đã giao và có thể xóa)
-            if (btnDelete != null && "delivered".equals(order.getStatus())) {
+            // Hiển thị trạng thái và nút xóa
+            String status = order.getStatus();
+            if ("delivered".equals(status)) {
+                tvStatus.setText("✅ Đã giao thành công");
+                tvStatus.setTextColor(0xFF4CAF50);
                 btnDelete.setVisibility(View.VISIBLE);
-                btnDelete.setOnClickListener(v -> {
-                    if (deleteListener != null) {
-                        deleteListener.onDeleteClick(order, position);
-                    }
-                });
-            } else if (btnDelete != null) {
+            } else if ("cancelled".equals(status)) {
+                tvStatus.setText("❌ Đã hủy");
+                tvStatus.setTextColor(0xFFF44336);
+                btnDelete.setVisibility(View.VISIBLE);
+            } else if ("pending".equals(status)) {
+                tvStatus.setText("⏳ Chờ xác nhận");
+                tvStatus.setTextColor(0xFFFF9800);
+                btnDelete.setVisibility(View.GONE);
+            } else if ("delivering".equals(status)) {
+                tvStatus.setText("🚚 Đang giao");
+                tvStatus.setTextColor(0xFF2196F3);
+                btnDelete.setVisibility(View.GONE);
+            } else {
+                tvStatus.setText("⏳ " + status);
+                tvStatus.setTextColor(0xFFFF9800);
                 btnDelete.setVisibility(View.GONE);
             }
 
-            if (listener != null) {
-                itemView.setOnClickListener(v -> listener.onItemClick(order));
-            }
+            btnDelete.setOnClickListener(v -> deleteListener.onDeleteClick(order, position));
+            itemView.setOnClickListener(v -> clickListener.onItemClick(order));
         }
     }
 }

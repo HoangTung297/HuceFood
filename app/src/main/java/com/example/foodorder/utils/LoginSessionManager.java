@@ -34,9 +34,7 @@ public class LoginSessionManager {
     }
 
     public String getUserId() {
-        String userId = pref.getString(KEY_USER_ID, "");
-        Log.d(TAG, "getUserId: " + userId);
-        return userId;
+        return pref.getString(KEY_USER_ID, "");
     }
 
     public String getUserEmail() {

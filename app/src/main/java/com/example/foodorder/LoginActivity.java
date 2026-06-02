@@ -12,6 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.foodorder.model.User;
+import com.example.foodorder.utils.LoginSessionManager;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -22,6 +23,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextView tvRegister, tvForgotPassword;
     private ProgressBar progressBar;
     private FirebaseFirestore db;
+    private LoginSessionManager sessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +31,14 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         db = FirebaseFirestore.getInstance();
+        sessionManager = new LoginSessionManager(this);
+
+        // Kiểm tra đã đăng nhập chưa
+        if (sessionManager.isLoggedIn()) {
+            navigateToMain();
+            return;
+        }
+
         initViews();
         setupClickListeners();
 
@@ -63,7 +73,7 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnSuccessListener(query -> {
                     if (query.isEmpty()) {
                         User sampleUser = new User();
-                        sampleUser.setName("Nguyễn Văn Tùng");
+                        sampleUser.setName("Nguyễn Hoàng Tùng");
                         sampleUser.setEmail("tung@gmail.com");
                         sampleUser.setPhone("0987654321");
                         sampleUser.setAddress("Hà Nội");
@@ -72,7 +82,7 @@ public class LoginActivity extends AppCompatActivity {
 
                         db.collection("users").document("tung@gmail.com").set(sampleUser)
                                 .addOnSuccessListener(aVoid -> {
-                                    System.out.println("✅ Đã tạo tài khoản mẫu: tung@gmail.com / 123456");
+                                    Toast.makeText(this, "✅ Tài khoản mẫu: tung@gmail.com / 123456", Toast.LENGTH_LONG).show();
                                 });
                     }
                 });
@@ -115,12 +125,14 @@ public class LoginActivity extends AppCompatActivity {
                             String userPhone = doc.getString("phone") != null ? doc.getString("phone") : "";
                             String userAddress = doc.getString("address") != null ? doc.getString("address") : "";
 
+                            // Lưu vào SessionManager
+                            sessionManager.createLoginSession(userId, userEmail, userName);
+
+                            // Lưu vào SharedPreferences
                             saveUserSession(userId, userName, userEmail, userPhone, userAddress);
 
-                            Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                            startActivity(intent);
-                            finish();
+                            Toast.makeText(this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
+                            navigateToMain();
                         } else {
                             Toast.makeText(this, "Mật khẩu không đúng", Toast.LENGTH_SHORT).show();
                         }
@@ -141,7 +153,16 @@ public class LoginActivity extends AppCompatActivity {
         editor.putString("user_email", userEmail);
         editor.putString("user_phone", userPhone);
         editor.putString("user_address", userAddress);
+        editor.putString("delivery_name", userName);
+        editor.putString("delivery_address", userAddress);
         editor.putBoolean("is_logged_in", true);
         editor.apply();
+    }
+
+    private void navigateToMain() {
+        Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

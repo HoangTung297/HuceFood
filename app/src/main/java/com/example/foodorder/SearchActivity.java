@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.adapter.FoodAdapter;
 import com.example.foodorder.model.Food;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.StringUtils;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
@@ -90,13 +91,13 @@ public class SearchActivity extends AppCompatActivity {
     private void setupToolbar() {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(false);  // Ẩn nút back mặc định
+            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
             getSupportActionBar().setTitle("");
         }
 
-        // Dùng ivBack làm nút back
         ivBack.setOnClickListener(v -> finish());
     }
+
     private void loadAllFoods() {
         db.collection("foods").limit(100).get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
@@ -142,7 +143,6 @@ public class SearchActivity extends AppCompatActivity {
     private void setupSearch() {
         etSearch.requestFocus();
 
-        // Nhận query từ Intent nếu có
         String searchQuery = getIntent().getStringExtra("search_query");
         if (searchQuery != null && !searchQuery.isEmpty()) {
             etSearch.setText(searchQuery);
@@ -199,15 +199,17 @@ public class SearchActivity extends AppCompatActivity {
         });
     }
 
+    // SỬA LẠI HÀM performSearch - HỖ TRỢ TÌM KIẾM KHÔNG DẤU
     private void performSearch(String query) {
         String searchQuery = query.toLowerCase().trim();
         resultList.clear();
 
         for (Food food : allFoodsList) {
-            if (food.getName().toLowerCase().contains(searchQuery) ||
-                    (food.getDescription() != null && food.getDescription().toLowerCase().contains(searchQuery)) ||
-                    (food.getCategory() != null && food.getCategory().toLowerCase().contains(searchQuery)) ||
-                    (food.getRestaurantName() != null && food.getRestaurantName().toLowerCase().contains(searchQuery))) {
+            // Sử dụng StringUtils.containsIgnoreCaseAndAccent để tìm kiếm không dấu
+            if (StringUtils.containsIgnoreCaseAndAccent(food.getName(), searchQuery) ||
+                    StringUtils.containsIgnoreCaseAndAccent(food.getDescription(), searchQuery) ||
+                    StringUtils.containsIgnoreCaseAndAccent(food.getCategory(), searchQuery) ||
+                    StringUtils.containsIgnoreCaseAndAccent(food.getRestaurantName(), searchQuery)) {
                 resultList.add(food);
             }
         }
@@ -226,12 +228,10 @@ public class SearchActivity extends AppCompatActivity {
             tvSuggestionTitle.setVisibility(View.GONE);
         }
 
-        // Lưu lịch sử tìm kiếm
         saveSearchHistory(query);
     }
 
     private void loadSuggestions() {
-        // Gợi ý món ăn phổ biến (top 10 bán chạy)
         db.collection("foods")
                 .orderBy("soldCount", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .limit(10)
@@ -270,7 +270,6 @@ public class SearchActivity extends AppCompatActivity {
     private void addDefaultSuggestions() {
         suggestionList.clear();
 
-        // Gợi ý mặc định
         String[] defaultFoods = {"Phở bò", "Gà rán", "Pizza", "Bún chả", "Cơm tấm", "Trà sữa"};
         String[] defaultPrices = {"55000", "45000", "159000", "45000", "40000", "35000"};
 

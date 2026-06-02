@@ -1,10 +1,10 @@
 package com.example.foodorder;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.content.Intent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -46,6 +46,20 @@ public class CheckoutActivity extends AppCompatActivity {
     private String selectedPaymentMethod = "COD";
     private static final String TAG = "CheckoutActivity";
     private boolean isProcessing = false;
+
+    // Map ánh xạ restaurantId -> tên nhà hàng
+    private static final Map<String, String> RESTAURANT_NAME_MAP = new HashMap<>();
+    static {
+        RESTAURANT_NAME_MAP.put("pho_thin", "Phở Thìn");
+        RESTAURANT_NAME_MAP.put("kfc", "KFC");
+        RESTAURANT_NAME_MAP.put("cong_ca_phe", "Cộng Cà Phê");
+        RESTAURANT_NAME_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
+        RESTAURANT_NAME_MAP.put("pizza_hut", "Pizza Hut");
+        RESTAURANT_NAME_MAP.put("lotteria", "Lotteria");
+        RESTAURANT_NAME_MAP.put("ding_tea", "Ding Tea");
+        RESTAURANT_NAME_MAP.put("mcdonalds", "McDonald's");
+        RESTAURANT_NAME_MAP.put("bo_to_quan", "Bò Tơ Quán");
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -234,9 +248,20 @@ public class CheckoutActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         prefs.edit()
                 .putString("user_name", name)
+                .putString("delivery_name", name)
                 .putString("user_phone", phone)
                 .putString("user_address", address)
+                .putString("delivery_address", address)
                 .apply();
+    }
+
+    // Lấy tên nhà hàng từ restaurantId
+    private String getRestaurantNameFromId(String restaurantId) {
+        if (restaurantId == null || restaurantId.isEmpty()) {
+            return "Nhà hàng";
+        }
+        String name = RESTAURANT_NAME_MAP.get(restaurantId.toLowerCase());
+        return name != null ? name : "Nhà hàng";
     }
 
     private void processOrder() {
@@ -312,13 +337,25 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setUserId(userId);
         order.setOrderCode("ORD" + System.currentTimeMillis());
 
+        // Lấy thông tin nhà hàng từ cart item
+        String restaurantId = null;
         String restaurantName = "Nhà hàng";
+
         if (cartItems != null && !cartItems.isEmpty() && cartItems.get(0) != null) {
-            restaurantName = cartItems.get(0).getName();
-            if (restaurantName == null || restaurantName.isEmpty()) {
-                restaurantName = "Nhà hàng";
+            restaurantId = cartItems.get(0).getRestaurantId();
+            restaurantName = getRestaurantNameFromId(restaurantId);
+
+            // Nếu không có restaurantId hoặc không tìm thấy trong map
+            if (restaurantName == null || restaurantName.equals("Nhà hàng")) {
+                // Fallback: dùng tên món
+                restaurantName = cartItems.get(0).getName();
+                if (restaurantName == null || restaurantName.isEmpty()) {
+                    restaurantName = "Nhà hàng";
+                }
             }
         }
+
+        order.setRestaurantId(restaurantId);
         order.setRestaurantName(restaurantName);
         order.setDeliveryName(name);
         order.setDeliveryPhone(phone);
@@ -352,6 +389,7 @@ public class CheckoutActivity extends AppCompatActivity {
                 map.put("quantity", item.getQuantity());
                 map.put("imageUrl", item.getImageUrl() != null ? item.getImageUrl() : "");
                 map.put("note", item.getNote() != null ? item.getNote() : "");
+                map.put("restaurantId", item.getRestaurantId());
                 items.add(map);
             }
         }
@@ -374,10 +412,8 @@ public class CheckoutActivity extends AppCompatActivity {
                 }
                 Toast.makeText(CheckoutActivity.this, message, Toast.LENGTH_LONG).show();
 
-                // Xóa giỏ hàng
                 clearCart();
 
-                // Gửi kết quả refresh về
                 Intent resultIntent = new Intent();
                 resultIntent.putExtra("refresh", true);
                 setResult(RESULT_OK, resultIntent);

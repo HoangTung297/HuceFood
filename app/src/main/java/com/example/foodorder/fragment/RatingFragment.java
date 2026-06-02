@@ -18,10 +18,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.RestaurantNameHelper;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class RatingFragment extends Fragment {
 
@@ -59,7 +62,10 @@ public class RatingFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        adapter = new RatingOrderAdapter(orderList, order -> showRatingDialog(order));
+        adapter = new RatingOrderAdapter(orderList,
+                order -> showOrderDetail(order),      // Click xem chi tiết
+                order -> showRatingDialog(order)      // Click nút đánh giá
+        );
         rvOrders.setLayoutManager(new LinearLayoutManager(getContext()));
         rvOrders.setAdapter(adapter);
     }
@@ -69,15 +75,11 @@ public class RatingFragment extends Fragment {
             @Override
             public void onSuccess(List<Order> data) {
                 orderList.clear();
-                if (data != null) {
-                    for (Order order : data) {
-                        if (!order.isRated()) {
-                            orderList.add(order);
-                        }
+                for (Order order : data) {
+                    if (!order.isRated()) {
+                        orderList.add(order);
                     }
                 }
-
-                adapter.notifyDataSetChanged();
 
                 if (orderList.isEmpty()) {
                     rvOrders.setVisibility(View.GONE);
@@ -85,16 +87,103 @@ public class RatingFragment extends Fragment {
                 } else {
                     rvOrders.setVisibility(View.VISIBLE);
                     layoutEmpty.setVisibility(View.GONE);
+                    adapter.notifyDataSetChanged();
                 }
             }
 
             @Override
             public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
-                rvOrders.setVisibility(View.GONE);
-                layoutEmpty.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    // Hiển thị chi tiết đơn hàng
+    private void showOrderDetail(Order order) {
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_order_detail, null);
+
+        TextView tvOrderId = dialogView.findViewById(R.id.tvOrderId);
+        TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
+        TextView tvOrderDate = dialogView.findViewById(R.id.tvOrderDate);
+        TextView tvPaymentMethod = dialogView.findViewById(R.id.tvPaymentMethod);
+        TextView tvItems = dialogView.findViewById(R.id.tvItems);
+        TextView tvOrderNote = dialogView.findViewById(R.id.tvOrderNote);
+        TextView tvTotalPrice = dialogView.findViewById(R.id.tvTotalPrice);
+        TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
+        Button btnClose = dialogView.findViewById(R.id.btnClose);
+
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
+        String orderCode = order.getOrderCode();
+        if (orderCode == null || orderCode.isEmpty()) {
+            String id = order.getId();
+            orderCode = id != null && id.length() > 8 ? id.substring(0, 8) : id;
+        }
+        tvOrderId.setText(orderCode);
+
+        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+
+        if (order.getCreatedAt() > 0) {
+            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+        } else {
+            tvOrderDate.setText("Đang cập nhật");
+        }
+
+        String paymentMethod = order.getPaymentMethod();
+        if ("COD".equals(paymentMethod)) {
+            tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
+        } else if ("Banking".equals(paymentMethod)) {
+            tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
+        } else if ("Wallet".equals(paymentMethod)) {
+            tvPaymentMethod.setText("💳 Ví điện tử");
+        } else {
+            tvPaymentMethod.setText(paymentMethod != null ? paymentMethod : "COD");
+        }
+
+        tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
+        tvStatus.setText("✅ Đã giao thành công");
+        tvStatus.setTextColor(0xFF4CAF50);
+
+        // Danh sách món kèm ghi chú
+        StringBuilder itemsText = new StringBuilder();
+        if (order.getItems() != null) {
+            for (Map<String, Object> item : order.getItems()) {
+                String name = (String) item.get("name");
+                long quantity = 1;
+                Object qtyObj = item.get("quantity");
+                if (qtyObj instanceof Long) {
+                    quantity = (Long) qtyObj;
+                } else if (qtyObj instanceof Double) {
+                    quantity = ((Double) qtyObj).longValue();
+                } else if (qtyObj instanceof Integer) {
+                    quantity = (Integer) qtyObj;
+                }
+                itemsText.append("• ").append(name).append(" x").append(quantity);
+
+                String note = (String) item.get("note");
+                if (note != null && !note.isEmpty()) {
+                    itemsText.append("\n  📝 ").append(note);
+                }
+                itemsText.append("\n");
+            }
+        }
+        tvItems.setText(itemsText.toString());
+
+        String orderNote = order.getOrderNote();
+        if (orderNote != null && !orderNote.isEmpty()) {
+            tvOrderNote.setText(orderNote);
+        } else {
+            tvOrderNote.setText("Không có ghi chú");
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+        dialog.show();
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
     }
 
     private void showRatingDialog(Order order) {
@@ -102,14 +191,27 @@ public class RatingFragment extends Fragment {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_rating, null);
 
         TextView tvRestaurantName = dialogView.findViewById(R.id.tvRestaurantName);
+        TextView tvOrderInfo = dialogView.findViewById(R.id.tvOrderInfo);
         RatingBar ratingBar = dialogView.findViewById(R.id.ratingBar);
         EditText etComment = dialogView.findViewById(R.id.etComment);
         Button btnSubmit = dialogView.findViewById(R.id.btnSubmit);
         Button btnCancel = dialogView.findViewById(R.id.btnCancel);
 
-        tvRestaurantName.setText(order.getRestaurantName());
+        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
 
-        AlertDialog dialog = builder.setView(dialogView).setTitle("Đánh giá nhà hàng").create();
+        // Hiển thị thông tin đơn hàng
+        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+
+        String orderInfo = "Mã đơn: " + order.getOrderCode() + "\n" +
+                "Ngày đặt: " + sdf.format(new java.util.Date(order.getCreatedAt())) + "\n" +
+                "Tổng tiền: " + f.format(order.getFinalTotal()) + "đ";
+        tvOrderInfo.setText(orderInfo);
+
+        AlertDialog dialog = builder.setView(dialogView)
+                .setTitle("Đánh giá nhà hàng")
+                .setCancelable(false)
+                .create();
         dialog.show();
 
         btnSubmit.setOnClickListener(v -> {
@@ -133,7 +235,6 @@ public class RatingFragment extends Fragment {
             public void onSuccess(Void data) {
                 Toast.makeText(getContext(), "Cảm ơn bạn đã đánh giá!", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
-                // Xóa đơn khỏi danh sách ngay lập tức
                 removeOrderFromList(order);
             }
 
@@ -144,7 +245,6 @@ public class RatingFragment extends Fragment {
         });
     }
 
-    // Xóa đơn khỏi danh sách sau khi đánh giá
     private void removeOrderFromList(Order order) {
         int position = -1;
         for (int i = 0; i < orderList.size(); i++) {
@@ -156,8 +256,6 @@ public class RatingFragment extends Fragment {
         if (position != -1) {
             orderList.remove(position);
             adapter.notifyItemRemoved(position);
-
-            // Kiểm tra nếu danh sách rỗng thì hiển thị layout trống
             if (orderList.isEmpty()) {
                 rvOrders.setVisibility(View.GONE);
                 layoutEmpty.setVisibility(View.VISIBLE);
@@ -178,15 +276,21 @@ public class RatingFragment extends Fragment {
     // ==================== ADAPTER ====================
     static class RatingOrderAdapter extends RecyclerView.Adapter<RatingOrderAdapter.ViewHolder> {
         private List<Order> orders;
-        private OnRateClickListener listener;
+        private OnItemClickListener itemClickListener;
+        private OnRateClickListener rateClickListener;
+
+        interface OnItemClickListener {
+            void onItemClick(Order order);
+        }
 
         interface OnRateClickListener {
             void onRateClick(Order order);
         }
 
-        RatingOrderAdapter(List<Order> orders, OnRateClickListener listener) {
+        RatingOrderAdapter(List<Order> orders, OnItemClickListener itemClickListener, OnRateClickListener rateClickListener) {
             this.orders = orders;
-            this.listener = listener;
+            this.itemClickListener = itemClickListener;
+            this.rateClickListener = rateClickListener;
         }
 
         @NonNull
@@ -200,7 +304,7 @@ public class RatingFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Order order = orders.get(position);
-            holder.bind(order, listener);
+            holder.bind(order, itemClickListener, rateClickListener);
         }
 
         @Override
@@ -209,34 +313,55 @@ public class RatingFragment extends Fragment {
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvOrderId, tvRestaurantName, tvOrderDate;
+            TextView tvOrderId, tvOrderDate, tvRestaurantName, tvFoodItems, tvTotalPrice;
             Button btnRate;
 
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvOrderId = itemView.findViewById(R.id.tvOrderId);
-                tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
                 tvOrderDate = itemView.findViewById(R.id.tvOrderDate);
+                tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
+                tvFoodItems = itemView.findViewById(R.id.tvFoodItems);
+                tvTotalPrice = itemView.findViewById(R.id.tvTotalPrice);
                 btnRate = itemView.findViewById(R.id.btnRate);
             }
 
-            void bind(Order order, OnRateClickListener listener) {
+            void bind(Order order, OnItemClickListener itemClickListener, OnRateClickListener rateClickListener) {
+                NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+
                 String orderCode = order.getOrderCode();
                 if (orderCode == null || orderCode.isEmpty()) {
                     String id = order.getId();
                     orderCode = id != null && id.length() > 6 ? id.substring(0, 6) : "ORD";
                 }
                 tvOrderId.setText("Mã: #" + orderCode);
-                tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng");
 
-                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 if (order.getCreatedAt() > 0) {
                     tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
                 } else {
                     tvOrderDate.setText("Đang cập nhật");
                 }
 
-                btnRate.setOnClickListener(v -> listener.onRateClick(order));
+                tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+                tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
+
+                // Danh sách món
+                StringBuilder itemsText = new StringBuilder();
+                if (order.getItems() != null) {
+                    for (Map<String, Object> item : order.getItems()) {
+                        String name = (String) item.get("name");
+                        long quantity = 1;
+                        Object qtyObj = item.get("quantity");
+                        if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                        else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                        itemsText.append("• ").append(name).append(" x").append(quantity).append("\n");
+                    }
+                }
+                tvFoodItems.setText(itemsText.toString());
+
+                btnRate.setOnClickListener(v -> rateClickListener.onRateClick(order));
+                itemView.setOnClickListener(v -> itemClickListener.onItemClick(order));
             }
         }
     }

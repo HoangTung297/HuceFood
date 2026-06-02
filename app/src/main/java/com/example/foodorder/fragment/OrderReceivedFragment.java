@@ -19,6 +19,7 @@ import com.example.foodorder.R;
 import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
+import com.example.foodorder.utils.RestaurantNameHelper;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,10 @@ public class OrderReceivedFragment extends Fragment {
         if (getActivity() != null) {
             userId = getActivity().getSharedPreferences("UserPrefs", 0)
                     .getString("user_id", "user123");
+            if (userId == null || userId.isEmpty()) {
+                userId = getActivity().getSharedPreferences("UserPrefs", 0)
+                        .getString("user_email", "user123");
+            }
         }
 
         setupRecyclerView();
@@ -71,7 +76,9 @@ public class OrderReceivedFragment extends Fragment {
             @Override
             public void onSuccess(List<Order> data) {
                 orderList.clear();
-                orderList.addAll(data);
+                if (data != null && !data.isEmpty()) {
+                    orderList.addAll(data);
+                }
                 adapter.updateList(orderList);
 
                 if (orderList.isEmpty()) {
@@ -143,25 +150,62 @@ public class OrderReceivedFragment extends Fragment {
         TextView tvStatus = dialogView.findViewById(R.id.tvStatus);
         Button btnClose = dialogView.findViewById(R.id.btnClose);
 
-        tvOrderId.setText(order.getOrderCode());
-        tvRestaurantName.setText(order.getRestaurantName());
+        String orderCode = order.getOrderCode();
+        if (orderCode == null || orderCode.isEmpty()) {
+            String id = order.getId();
+            orderCode = id != null && id.length() > 8 ? id.substring(0, 8) : id;
+        }
+        tvOrderId.setText(orderCode);
+
+        // DÙNG HELPER ĐỂ LẤY TÊN NHÀ HÀNG
+        tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-        tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+        if (order.getCreatedAt() > 0) {
+            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+        } else {
+            tvOrderDate.setText("Đang cập nhật");
+        }
 
-        String paymentText = order.getPaymentMethod().equals("COD") ? "Thanh toán khi nhận hàng" : "Ví MoMo";
-        tvPaymentMethod.setText(paymentText);
+        String paymentMethod = order.getPaymentMethod();
+        if ("COD".equals(paymentMethod)) {
+            tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
+        } else if ("Banking".equals(paymentMethod)) {
+            tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
+        } else if ("Wallet".equals(paymentMethod)) {
+            tvPaymentMethod.setText("💳 Ví điện tử");
+        } else {
+            tvPaymentMethod.setText(paymentMethod != null ? paymentMethod : "COD");
+        }
+
         tvTotalPrice.setText(String.format("%,.0fđ", order.getFinalTotal()));
-        tvStatus.setText(order.getStatusText());
 
-        // Hiển thị danh sách món kèm ghi chú
+        // Trạng thái
+        String status = order.getStatus();
+        if ("delivered".equals(status)) {
+            tvStatus.setText("✅ Đã giao thành công");
+            tvStatus.setTextColor(0xFF4CAF50);
+        } else {
+            tvStatus.setText(order.getStatusText());
+        }
+
+        // Danh sách món kèm ghi chú
         StringBuilder itemsText = new StringBuilder();
         if (order.getItems() != null) {
             for (Map<String, Object> item : order.getItems()) {
                 String name = (String) item.get("name");
-                long quantity = ((Number) item.get("quantity")).longValue();
+                long quantity = 1;
+                Object qtyObj = item.get("quantity");
+                if (qtyObj instanceof Long) {
+                    quantity = (Long) qtyObj;
+                } else if (qtyObj instanceof Double) {
+                    quantity = ((Double) qtyObj).longValue();
+                } else if (qtyObj instanceof Integer) {
+                    quantity = (Integer) qtyObj;
+                }
                 itemsText.append("• ").append(name).append(" x").append(quantity);
 
-                // Hiển thị ghi chú của món
+                // Ghi chú của món
                 String note = (String) item.get("note");
                 if (note != null && !note.isEmpty()) {
                     itemsText.append("\n  📝 ").append(note);
@@ -171,7 +215,7 @@ public class OrderReceivedFragment extends Fragment {
         }
         tvItems.setText(itemsText.toString());
 
-        // Hiển thị ghi chú đơn hàng
+        // Ghi chú đơn hàng
         String orderNote = order.getOrderNote();
         if (orderNote != null && !orderNote.isEmpty()) {
             tvOrderNote.setText(orderNote);
@@ -188,7 +232,17 @@ public class OrderReceivedFragment extends Fragment {
         btnClose.setOnClickListener(v -> dialog.dismiss());
     }
 
-    // Adapter
+    public void refreshData() {
+        loadOrders();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadOrders();
+    }
+
+    // ==================== ADAPTER ====================
     static class OrderReceivedAdapter extends RecyclerView.Adapter<OrderReceivedAdapter.ViewHolder> {
         private List<Order> orders;
         private OnReorderListener reorderListener;
@@ -242,13 +296,23 @@ public class OrderReceivedFragment extends Fragment {
             }
 
             void bind(Order order, OnReorderListener reorderListener, OnItemClickListener itemClickListener) {
-                tvOrderId.setText("Mã: #" + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
+                String orderCode = order.getOrderCode();
+                if (orderCode == null || orderCode.isEmpty()) {
+                    String id = order.getId();
+                    orderCode = id != null && id.length() > 6 ? id.substring(0, 6) : "ORD";
+                }
+                tvOrderId.setText("Mã: #" + orderCode);
 
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
                 long createdAt = order.getCreatedAt();
-                tvOrderDate.setText(sdf.format(new java.util.Date(createdAt)));
+                if (createdAt > 0) {
+                    tvOrderDate.setText(sdf.format(new java.util.Date(createdAt)));
+                } else {
+                    tvOrderDate.setText("Đang cập nhật");
+                }
 
-                tvRestaurantName.setText(order.getRestaurantName());
+                // DÙNG HELPER ĐỂ LẤY TÊN NHÀ HÀNG
+                tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
 
                 StringBuilder itemsText = new StringBuilder();
                 if (order.getItems() != null) {
@@ -272,15 +336,5 @@ public class OrderReceivedFragment extends Fragment {
                 itemView.setOnClickListener(v -> itemClickListener.onItemClick(order));
             }
         }
-    }
-
-    public void refreshData() {
-        loadOrders();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        loadOrders();
     }
 }

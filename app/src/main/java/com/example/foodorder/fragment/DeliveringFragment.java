@@ -22,6 +22,7 @@ import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.LoginSessionManager;
+import com.example.foodorder.utils.RestaurantNameHelper;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -70,95 +71,84 @@ public class DeliveringFragment extends Fragment {
     }
 
     private void showOrderDetailDialog(Order order) {
-        Dialog dialog = new Dialog(getContext());
-        dialog.setContentView(R.layout.dialog_order_detail);
+        try {
+            Dialog dialog = new Dialog(getContext());
+            dialog.setContentView(R.layout.dialog_order_detail);
 
-        // Ánh xạ view
-        TextView tvOrderId = dialog.findViewById(R.id.tvOrderId);
-        TextView tvStatus = dialog.findViewById(R.id.tvStatus);
-        TextView tvRestaurantName = dialog.findViewById(R.id.tvRestaurantName);
-        TextView tvOrderDate = dialog.findViewById(R.id.tvOrderDate);
-        TextView tvPaymentMethod = dialog.findViewById(R.id.tvPaymentMethod);
-        TextView tvItems = dialog.findViewById(R.id.tvItems);
-        TextView tvOrderNote = dialog.findViewById(R.id.tvOrderNote);
-        TextView tvTotalPrice = dialog.findViewById(R.id.tvTotalPrice);
-        Button btnClose = dialog.findViewById(R.id.btnClose);
+            TextView tvOrderId = dialog.findViewById(R.id.tvOrderId);
+            TextView tvRestaurantName = dialog.findViewById(R.id.tvRestaurantName);
+            TextView tvOrderDate = dialog.findViewById(R.id.tvOrderDate);
+            TextView tvPaymentMethod = dialog.findViewById(R.id.tvPaymentMethod);
+            TextView tvItems = dialog.findViewById(R.id.tvItems);
+            TextView tvOrderNote = dialog.findViewById(R.id.tvOrderNote);
+            TextView tvTotalPrice = dialog.findViewById(R.id.tvTotalPrice);
+            TextView tvStatus = dialog.findViewById(R.id.tvStatus);
+            Button btnClose = dialog.findViewById(R.id.btnClose);
 
-        NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
+            NumberFormat f = NumberFormat.getInstance(new Locale("vi", "VN"));
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", new Locale("vi", "VN"));
 
-        // Set dữ liệu
-        String orderCode = order.getOrderCode();
-        if (orderCode == null || orderCode.isEmpty()) {
-            String id = order.getId();
-            orderCode = id != null && id.length() > 8 ? id.substring(0, 8) : id;
-        }
-        tvOrderId.setText(orderCode);
-
-        String status = order.getStatus();
-        if ("pending".equals(status)) {
-            tvStatus.setText("Chờ xác nhận");
-            tvStatus.setTextColor(0xFFFF9800);
-        } else if ("delivering".equals(status)) {
-            tvStatus.setText("Đang giao");
-            tvStatus.setTextColor(0xFF2196F3);
-        } else if ("delivered".equals(status)) {
-            tvStatus.setText("Đã giao");
-            tvStatus.setTextColor(0xFF4CAF50);
-        } else if ("cancelled".equals(status)) {
-            tvStatus.setText("Đã hủy");
-            tvStatus.setTextColor(0xFFF44336);
-        }
-
-        tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng");
-
-        if (order.getCreatedAt() > 0) {
-            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
-        } else {
-            tvOrderDate.setText("Đang cập nhật");
-        }
-
-        String paymentMethod = order.getPaymentMethod();
-        if ("COD".equals(paymentMethod)) {
-            tvPaymentMethod.setText("Thanh toán khi nhận hàng");
-        } else if ("Banking".equals(paymentMethod)) {
-            tvPaymentMethod.setText("Chuyển khoản ngân hàng");
-        } else if ("Wallet".equals(paymentMethod)) {
-            tvPaymentMethod.setText("Ví điện tử");
-        } else {
-            tvPaymentMethod.setText(paymentMethod != null ? paymentMethod : "COD");
-        }
-
-        // Danh sách món
-        StringBuilder items = new StringBuilder();
-        if (order.getItems() != null) {
-            for (Map<String, Object> item : order.getItems()) {
-                String name = (String) item.get("name");
-                long quantity = 1;
-                Object qtyObj = item.get("quantity");
-                if (qtyObj instanceof Long) quantity = (Long) qtyObj;
-                else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
-                else if (qtyObj instanceof Integer) quantity = (Integer) qtyObj;
-                items.append("• ").append(name).append(" x").append(quantity).append("\n");
+            String orderCode = order.getOrderCode();
+            if (orderCode == null || orderCode.isEmpty()) {
+                String id = order.getId();
+                orderCode = id != null && id.length() > 8 ? id.substring(0, 8) : id;
             }
+            tvOrderId.setText(orderCode);
+
+            // Dùng helper để lấy tên nhà hàng
+            tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
+
+            if (order.getCreatedAt() > 0) {
+                tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+            }
+
+            String paymentMethod = order.getPaymentMethod();
+            if ("COD".equals(paymentMethod)) {
+                tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
+            } else if ("Banking".equals(paymentMethod)) {
+                tvPaymentMethod.setText("🏦 Chuyển khoản ngân hàng");
+            } else if ("Wallet".equals(paymentMethod)) {
+                tvPaymentMethod.setText("💳 Ví điện tử");
+            }
+
+            tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
+
+            String status = order.getStatus();
+            if ("pending".equals(status)) {
+                tvStatus.setText("⏳ Chờ xác nhận");
+                tvStatus.setTextColor(0xFFFF9800);
+            } else if ("delivering".equals(status)) {
+                tvStatus.setText("🚚 Đang giao");
+                tvStatus.setTextColor(0xFF2196F3);
+            } else if ("delivered".equals(status)) {
+                tvStatus.setText("✅ Đã giao");
+                tvStatus.setTextColor(0xFF4CAF50);
+            } else if ("cancelled".equals(status)) {
+                tvStatus.setText("❌ Đã hủy");
+                tvStatus.setTextColor(0xFFF44336);
+            }
+
+            StringBuilder items = new StringBuilder();
+            if (order.getItems() != null) {
+                for (Map<String, Object> item : order.getItems()) {
+                    String name = (String) item.get("name");
+                    long quantity = 1;
+                    Object qtyObj = item.get("quantity");
+                    if (qtyObj instanceof Long) quantity = (Long) qtyObj;
+                    else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
+                    items.append("• ").append(name).append(" x").append(quantity).append("\n");
+                }
+            }
+            tvItems.setText(items.toString());
+
+            String note = order.getOrderNote();
+            tvOrderNote.setText(note != null && !note.isEmpty() ? note : "Không có ghi chú");
+
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+            dialog.show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error: " + e.getMessage());
         }
-        tvItems.setText(items.toString());
-
-        // Ghi chú
-        String note = order.getOrderNote();
-        if (note == null || note.isEmpty()) {
-            tvOrderNote.setText("Không có ghi chú");
-        } else {
-            tvOrderNote.setText(note);
-        }
-
-        // Tổng tiền
-        tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
-
-        // Đóng dialog
-        btnClose.setOnClickListener(v -> dialog.dismiss());
-
-        dialog.show();
     }
 
     private String getUserId() {
@@ -175,7 +165,6 @@ public class DeliveringFragment extends Fragment {
 
     private void loadOrders() {
         String userId = getUserId();
-
         if (userId.isEmpty()) {
             layoutEmpty.setVisibility(View.VISIBLE);
             rvDeliveringOrders.setVisibility(View.GONE);
@@ -185,7 +174,6 @@ public class DeliveringFragment extends Fragment {
         layoutEmpty.setVisibility(View.GONE);
         rvDeliveringOrders.setVisibility(View.VISIBLE);
 
-        // Lấy đơn hàng pending và delivering
         repository.getOrdersByStatus(userId, "pending", new FirebaseRepository.OnDataLoaded<List<Order>>() {
             @Override
             public void onSuccess(List<Order> data) {
@@ -358,24 +346,23 @@ public class DeliveringFragment extends Fragment {
                 if ("pending".equals(status)) {
                     tvStatus.setText("⏳ Chờ xác nhận");
                     tvStatus.setTextColor(0xFFFF9800);
+                    btnReceived.setVisibility(View.GONE);
+                    btnCancel.setVisibility(View.VISIBLE);
                 } else if ("delivering".equals(status)) {
                     tvStatus.setText("🚚 Đang giao");
                     tvStatus.setTextColor(0xFF2196F3);
+                    btnReceived.setVisibility(View.VISIBLE);
+                    btnCancel.setVisibility(View.VISIBLE);
                 } else if ("delivered".equals(status)) {
                     tvStatus.setText("✅ Đã giao");
                     tvStatus.setTextColor(0xFF4CAF50);
+                    btnReceived.setVisibility(View.GONE);
+                    btnCancel.setVisibility(View.GONE);
                 } else if ("cancelled".equals(status)) {
                     tvStatus.setText("❌ Đã hủy");
                     tvStatus.setTextColor(0xFFF44336);
-                }
-
-                // Hiển thị nút
-                if ("delivered".equals(status) || "cancelled".equals(status)) {
-                    btnCancel.setVisibility(View.GONE);
                     btnReceived.setVisibility(View.GONE);
-                } else {
-                    btnCancel.setVisibility(View.VISIBLE);
-                    btnReceived.setVisibility(View.VISIBLE);
+                    btnCancel.setVisibility(View.GONE);
                 }
 
                 if (order.getCreatedAt() > 0) {
@@ -384,7 +371,8 @@ public class DeliveringFragment extends Fragment {
                     tvOrderDate.setText("Đang cập nhật");
                 }
 
-                tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng");
+                // Dùng helper để lấy tên nhà hàng
+                tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
                 tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
                 StringBuilder items = new StringBuilder();
@@ -395,7 +383,6 @@ public class DeliveringFragment extends Fragment {
                         Object qtyObj = item.get("quantity");
                         if (qtyObj instanceof Long) quantity = (Long) qtyObj;
                         else if (qtyObj instanceof Double) quantity = ((Double) qtyObj).longValue();
-                        else if (qtyObj instanceof Integer) quantity = (Integer) qtyObj;
                         items.append("• ").append(name).append(" x").append(quantity).append("\n");
                     }
                 }

@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
+import com.example.foodorder.utils.RestaurantNameHelper;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -94,7 +95,8 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
                 tvOrderDate.setText("Đang cập nhật");
             }
 
-            tvRestaurantName.setText(order.getRestaurantName() != null ? order.getRestaurantName() : "Nhà hàng");
+            // DÙNG HELPER ĐỂ LẤY TÊN NHÀ HÀNG
+            tvRestaurantName.setText(RestaurantNameHelper.getRestaurantName(order));
             tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");
 
             // Hiển thị danh sách món
@@ -130,8 +132,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
                 tvStatus.setTextColor(0xFF2196F3);
                 btnDelete.setVisibility(View.GONE);
             } else {
-                tvStatus.setText("⏳ " + status);
-                tvStatus.setTextColor(0xFFFF9800);
+                tvStatus.setText(status);
                 btnDelete.setVisibility(View.GONE);
             }
 

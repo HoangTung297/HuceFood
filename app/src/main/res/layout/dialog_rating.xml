@@ -1,24 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Đánh giá món ăn"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="12dp" />
-
-    <TextView
         android:id="@+id/tvRestaurantName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Nhà hàng:"
-        android:textSize="14sp" />
+        android:text="Phở Thìn"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#FF5722"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvOrderInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mã đơn: ORD123456\nNgày đặt: 01/06/2024\nTổng tiền: 70,000đ"
+        android:textSize="13sp"
+        android:textColor="#757575"
+        android:layout_marginBottom="16dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E0E0E0"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chất lượng dịch vụ"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
 
     <RatingBar
         android:id="@+id/ratingBar"
@@ -26,39 +46,44 @@
         android:layout_height="wrap_content"
         android:numStars="5"
         android:stepSize="0.5"
-        android:layout_marginTop="8dp" />
+        android:rating="0"
+        android:layout_marginBottom="16dp" />
 
     <EditText
         android:id="@+id/etComment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Nhận xét của bạn (tùy chọn)"
+        android:hint="Nhận xét của bạn về nhà hàng..."
         android:minHeight="80dp"
         android:gravity="top"
-        android:layout_marginTop="12dp" />
+        android:padding="12dp"
+        android:background="@drawable/bg_edittext_border"
+        android:layout_marginBottom="16dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="16dp">
+        android:orientation="horizontal">
 
         <Button
             android:id="@+id/btnCancel"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="44dp"
             android:layout_weight="1"
-            android:text="Hủy"
-            android:layout_marginEnd="8dp"
-            android:backgroundTint="#757575" />
+            android:text="HỦY"
+            android:backgroundTint="#9E9E9E"
+            android:textColor="@android:color/white"
+            android:layout_marginEnd="8dp" />
 
         <Button
             android:id="@+id/btnSubmit"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="44dp"
             android:layout_weight="1"
-            android:text="Gửi"
-            android:backgroundTint="#FF9800" />
+            android:text="GỬI ĐÁNH GIÁ"
+            android:backgroundTint="#4CAF50"
+            android:textColor="@android:color/white"
+            android:layout_marginStart="8dp" />
 
     </LinearLayout>
 

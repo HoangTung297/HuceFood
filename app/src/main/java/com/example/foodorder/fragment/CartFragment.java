@@ -21,7 +21,6 @@ import com.example.foodorder.R;
 import com.example.foodorder.adapter.CartAdapter;
 import com.example.foodorder.adapter.VoucherAdapter;
 import com.example.foodorder.model.CartItem;
-import com.example.foodorder.model.Order;
 import com.example.foodorder.model.Voucher;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -56,12 +55,17 @@ public class CartFragment extends Fragment {
     private double discount = 0;
     private double deliveryFee = 15000;
     private boolean isApplyingVoucher = false;
+    private boolean isFirstLoad = true;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_cart, container, false);
         initViews(view);
         setupRecyclerView();
+
+        // Hiển thị layout trống ngay lập tức, sau đó mới load dữ liệu
+        showEmptyLayoutImmediately();
+
         loadCart();
         loadUserInfo();
         return view;
@@ -101,6 +105,13 @@ public class CartFragment extends Fragment {
                         .commit();
             }
         });
+    }
+
+    // Hiển thị layout trống ngay lập tức
+    private void showEmptyLayoutImmediately() {
+        layoutCartContent.setVisibility(View.GONE);
+        layoutEmpty.setVisibility(View.VISIBLE);
+        rvCart.setVisibility(View.GONE);
     }
 
     private void loadUserInfo() {
@@ -169,11 +180,15 @@ public class CartFragment extends Fragment {
                 calculateTotals();
 
                 if (cartItems.isEmpty()) {
+                    // Hiển thị layout trống
                     layoutCartContent.setVisibility(View.GONE);
                     layoutEmpty.setVisibility(View.VISIBLE);
+                    rvCart.setVisibility(View.GONE);
                 } else {
+                    // Hiển thị nội dung giỏ hàng
                     layoutCartContent.setVisibility(View.VISIBLE);
                     layoutEmpty.setVisibility(View.GONE);
+                    rvCart.setVisibility(View.VISIBLE);
                     loadAvailableVouchers();
                 }
             }
@@ -181,6 +196,10 @@ public class CartFragment extends Fragment {
             @Override
             public void onError(String error) {
                 Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_SHORT).show();
+                // Vẫn hiển thị layout trống nếu có lỗi
+                layoutCartContent.setVisibility(View.GONE);
+                layoutEmpty.setVisibility(View.VISIBLE);
+                rvCart.setVisibility(View.GONE);
             }
         });
     }
@@ -413,26 +432,15 @@ public class CartFragment extends Fragment {
         }
     }
 
-    private void createOrderNotification(String orderCode) {
-        if (getActivity() == null) return;
-
-        HashMap<String, Object> notification = new HashMap<>();
-        notification.put("userId", userId);
-        notification.put("title", "Đặt hàng thành công 🎉");
-        notification.put("message", "Đơn hàng #" + orderCode + " đã được đặt thành công.");
-        notification.put("type", "order");
-        notification.put("createdAt", System.currentTimeMillis());
-        notification.put("isRead", false);
-        notification.put("orderId", orderCode);
-
-        db.collection("notifications").add(notification)
-                .addOnSuccessListener(docRef -> Log.d("CartFragment", "Đã tạo thông báo"))
-                .addOnFailureListener(e -> Log.e("CartFragment", "Lỗi tạo thông báo: " + e.getMessage()));
-    }
-
     public void refreshData() {
         loadCart();
         calculateTotals();
         loadAvailableVouchers();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadCart();
     }
 }

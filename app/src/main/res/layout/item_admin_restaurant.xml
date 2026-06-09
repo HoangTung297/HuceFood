@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="#FFFFFF"
+    android:layout_margin="8dp">
+
+    <ImageView
+        android:id="@+id/ivImage"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_restaurant_placeholder" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tên nhà hàng"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Địa chỉ"
+            android:textSize="12sp"
+            android:textColor="#666666" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/tvRating"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="4.5 ★"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvDeliveryTime"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="30 phút"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvDiscount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Giảm 20%"
+            android:textSize="12sp"
+            android:textColor="#FF9800" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/btnEdit"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:text="Sửa"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btnDelete"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@android:color/holo_red_dark"
+            android:text="Xóa"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

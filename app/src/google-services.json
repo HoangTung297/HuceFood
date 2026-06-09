@@ -1,0 +1,155 @@
+{
+  "project_info": {
+    "project_number": "870254670054",
+    "project_id": "hucefood",
+    "storage_bucket": "hucefood.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870254670054:android:9caa5b79000876efe54b27",
+        "android_client_info": {
+          "package_name": "com.example.foodorder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7ZdjbMPR0K9jMUoETGLnQgDnzYh_UWfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870254670054:android:ce29c280f532670ae54b27",
+        "android_client_info": {
+          "package_name": "com.example.foodorder.admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7ZdjbMPR0K9jMUoETGLnQgDnzYh_UWfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870254670054:android:7cc2c0a98f0093bae54b27",
+        "android_client_info": {
+          "package_name": "com.example.foodorder1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7ZdjbMPR0K9jMUoETGLnQgDnzYh_UWfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870254670054:android:164cb3dc90dd8a14e54b27",
+        "android_client_info": {
+          "package_name": "com.foodorder.admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7ZdjbMPR0K9jMUoETGLnQgDnzYh_UWfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870254670054:android:84befdde646dca4de54b27",
+        "android_client_info": {
+          "package_name": "com.thanhan.foodorder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7ZdjbMPR0K9jMUoETGLnQgDnzYh_UWfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870254670054-plsb6kbnd8tsfloepr0rnsjd2mk2hm6p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

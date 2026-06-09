@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_dashboard"
+            android:title="📊 Dashboard" />
+        <item
+            android:id="@+id/nav_users"
+            android:title="👥 Người dùng" />
+        <item
+            android:id="@+id/nav_restaurants"
+            android:title="🏪 Nhà hàng" />
+        <item
+            android:id="@+id/nav_foods"
+            android:title="🍕 Món ăn" />
+        <item
+            android:id="@+id/nav_orders"
+            android:title="📦 Đơn hàng" />
+        <item
+            android:id="@+id/nav_vouchers"
+            android:title="🎫 Voucher" />
+        <item
+            android:id="@+id/nav_notifications"
+            android:title="📢 Thông báo" />
+        <item
+            android:id="@+id/nav_logout"
+            android:title="🚪 Đăng xuất" />
+    </group>
+</menu>

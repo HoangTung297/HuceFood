@@ -1,8 +1,13 @@
 package com.example.foodorder.fragment;
 
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,19 +20,23 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.foodorder.R;
 import com.example.foodorder.adapter.NotificationAdapter;
 import com.example.foodorder.model.Notification;
-import com.example.foodorder.utils.SampleDataInitializer;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class NotificationFragment extends Fragment {
+
+    private static final String TAG = "NotificationFragment";
+    public static final String ACTION_REFRESH_NOTIFICATIONS = "REFRESH_NOTIFICATIONS";
 
     private RecyclerView rvNotifications;
     private LinearLayout layoutEmpty;
@@ -39,18 +48,32 @@ public class NotificationFragment extends Fragment {
     private NotificationAdapter adapter;
     private List<Notification> notificationList;
     private FirebaseFirestore db;
-    private String userId = "";  // Khởi tạo rỗng
+    private String userId = "";
     private String currentFilter = "all";
     private View rootView;
+
+    // Broadcast receiver để refresh khi có thông báo mới
+    private final BroadcastReceiver refreshReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_REFRESH_NOTIFICATIONS.equals(intent.getAction())) {
+                Log.d(TAG, "📡 Received refresh broadcast, reloading notifications...");
+                loadNotifications();
+            }
+        }
+    };
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         rootView = inflater.inflate(R.layout.fragment_notification, container, false);
 
-        // LẤY userId TỪ SharedPreferences TRƯỚC
-        loadUserId();
+        // Đăng ký BroadcastReceiver
+        IntentFilter filter = new IntentFilter(ACTION_REFRESH_NOTIFICATIONS);
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(refreshReceiver, filter);
+        Log.d(TAG, "📡 Registered BroadcastReceiver for " + ACTION_REFRESH_NOTIFICATIONS);
 
+        loadUserId();
         initViews(rootView);
         setupRecyclerView();
         setupFilterTabs(rootView);
@@ -59,25 +82,52 @@ public class NotificationFragment extends Fragment {
         return rootView;
     }
 
-    // THÊM METHOD NÀY ĐỂ LẤY userId ĐÚNG
+    /**
+     * Lấy userId từ email của user
+     */
     private void loadUserId() {
         if (getActivity() != null) {
             SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
-            userId = prefs.getString("user_id", "");
 
-            // Nếu chưa có thì thử lấy từ email (trường hợp cũ)
-            if (userId.isEmpty()) {
-                userId = prefs.getString("user_email", "tung@gmail.com");
+            // Ưu tiên lấy user_email làm userId
+            String email = prefs.getString("user_email", "");
+            String id = prefs.getString("user_id", "");
+
+            if (email != null && !email.isEmpty()) {
+                userId = email;
+            } else if (id != null && !id.isEmpty() && !id.equals("user123")) {
+                userId = id;
+            } else {
+                userId = "tung@gmail.com";
             }
 
-            // Log để kiểm tra
-            android.util.Log.d("NotificationFragment", "Loaded userId: " + userId);
+            Log.d(TAG, "📧 Loaded userId from email: " + userId);
         }
 
-        // Nếu vẫn rỗng thì dùng email mặc định
-        if (userId.isEmpty()) {
+        if (userId == null || userId.isEmpty()) {
             userId = "tung@gmail.com";
         }
+    }
+
+    /**
+     * Lấy userId hiện tại (email)
+     */
+    private String getCurrentUserId() {
+        if (getActivity() != null) {
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+            String email = prefs.getString("user_email", "");
+
+            // Ưu tiên dùng email làm userId
+            if (email != null && !email.isEmpty()) {
+                return email;
+            }
+
+            String id = prefs.getString("user_id", "");
+            if (id != null && !id.isEmpty() && !id.equals("user123")) {
+                return id;
+            }
+        }
+        return "tung@gmail.com";
     }
 
     private void initViews(View view) {
@@ -150,7 +200,7 @@ public class NotificationFragment extends Fragment {
         for (Button btn : buttons) {
             if (btn != null) {
                 btn.setBackgroundResource(R.drawable.bg_filter_button);
-                btn.setTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
+                btn.setTextColor(ContextCompat.getColor(getContext(), android.R.color.darker_gray));
             }
         }
 
@@ -161,22 +211,27 @@ public class NotificationFragment extends Fragment {
         }
     }
 
+    /**
+     * Load thông báo - KHÔNG dùng orderBy để tránh lỗi index
+     */
     private void loadNotifications() {
-        if (userId == null || userId.isEmpty()) {
-            loadUserId(); // Thử lấy lại
-            if (userId.isEmpty()) {
-                Toast.makeText(getContext(), "Chưa có thông tin người dùng", Toast.LENGTH_SHORT).show();
-                return;
-            }
+        String currentUserId = getCurrentUserId();
+
+        if (currentUserId == null || currentUserId.isEmpty()) {
+            Log.e(TAG, "❌ userId is null or empty!");
+            Toast.makeText(getContext(), "Chưa có thông tin người dùng", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        Log.d(TAG, "📧 Loading notifications for userId: " + currentUserId);
 
         if (progressBar != null) {
             progressBar.setVisibility(View.VISIBLE);
         }
 
-        // Query đơn giản trước để test
+        // Tạo query với userId là email
         Query query = db.collection("notifications")
-                .whereEqualTo("userId", userId);
+                .whereEqualTo("userId", currentUserId);
 
         if (!"all".equals(currentFilter)) {
             query = query.whereEqualTo("type", currentFilter);
@@ -186,7 +241,7 @@ public class NotificationFragment extends Fragment {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     notificationList.clear();
 
-                    android.util.Log.d("NotificationFragment", "Found " + queryDocumentSnapshots.size() + " notifications for userId: " + userId);
+                    Log.d(TAG, "📦 Found " + queryDocumentSnapshots.size() + " notifications for user: " + currentUserId);
 
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         Notification notification = new Notification();
@@ -195,19 +250,23 @@ public class NotificationFragment extends Fragment {
                         notification.setTitle(doc.getString("title"));
                         notification.setMessage(doc.getString("message"));
                         notification.setType(doc.getString("type"));
-                        notification.setCreatedAt(doc.getLong("createdAt") != null ?
-                                doc.getLong("createdAt") : 0);
-                        notification.setRead(doc.getBoolean("isRead") != null &&
-                                doc.getBoolean("isRead"));
+
+                        Long createdAt = doc.getLong("createdAt");
+                        notification.setCreatedAt(createdAt != null ? createdAt : System.currentTimeMillis());
+
+                        notification.setRead(doc.getBoolean("isRead") != null && doc.getBoolean("isRead"));
                         notification.setOrderId(doc.getString("orderId"));
                         notification.setImageUrl(doc.getString("imageUrl"));
                         notificationList.add(notification);
 
-                        android.util.Log.d("NotificationFragment", "Added: " + notification.getTitle());
+                        Log.d(TAG, "📄 Notification: " + notification.getTitle() + " | userId: " + notification.getUserId());
                     }
 
-                    // Sắp xếp theo thời gian mới nhất
-                    notificationList.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
+                    // Sắp xếp thủ công theo createdAt (mới nhất lên đầu)
+                    Collections.sort(notificationList, (o1, o2) ->
+                            Long.compare(o2.getCreatedAt(), o1.getCreatedAt()));
+
+                    Log.d(TAG, "✅ After sorting, " + notificationList.size() + " notifications loaded");
 
                     updateUI();
                     if (progressBar != null) {
@@ -218,9 +277,15 @@ public class NotificationFragment extends Fragment {
                     if (progressBar != null) {
                         progressBar.setVisibility(View.GONE);
                     }
-                    android.util.Log.e("NotificationFragment", "Error: " + e.getMessage());
-                    if (getContext() != null) {
-                        Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "❌ Error loading notifications: " + e.getMessage());
+
+                    String errorMsg = e.getMessage();
+                    if (errorMsg != null && errorMsg.contains("FAILED_PRECONDITION")) {
+                        Toast.makeText(getContext(),
+                                "Lỗi: Cần tạo index trên Firebase. Vui lòng liên hệ quản trị viên.",
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(getContext(), "Lỗi tải thông báo: " + errorMsg, Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -230,6 +295,8 @@ public class NotificationFragment extends Fragment {
         for (Notification n : notificationList) {
             if (!n.isRead()) unreadCount++;
         }
+
+        Log.d(TAG, "📊 updateUI: " + notificationList.size() + " notifications, " + unreadCount + " unread");
 
         if (btnMarkAllRead != null) {
             btnMarkAllRead.setText(unreadCount > 0 ?
@@ -251,12 +318,26 @@ public class NotificationFragment extends Fragment {
         } else {
             if (rvNotifications != null) rvNotifications.setVisibility(View.VISIBLE);
             if (layoutEmpty != null) layoutEmpty.setVisibility(View.GONE);
-            if (adapter != null) adapter.updateList(notificationList);
+            if (adapter != null) {
+                adapter.updateList(notificationList);
+                Log.d(TAG, "🔄 Updated adapter with " + notificationList.size() + " items");
+            }
         }
     }
 
     private void onNotificationClick(Notification notification) {
         if (getContext() == null) return;
+
+        // Đánh dấu là đã đọc khi click
+        if (!notification.isRead()) {
+            db.collection("notifications").document(notification.getId())
+                    .update("isRead", true)
+                    .addOnSuccessListener(aVoid -> {
+                        notification.setRead(true);
+                        if (adapter != null) adapter.updateList(notificationList);
+                        updateUI();
+                    });
+        }
 
         if (notification.getType().equals("order") && notification.getOrderId() != null) {
             Toast.makeText(getContext(), "Đơn hàng: " + notification.getOrderId(), Toast.LENGTH_LONG).show();
@@ -368,5 +449,15 @@ public class NotificationFragment extends Fragment {
     public void onResume() {
         super.onResume();
         loadNotifications();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        try {
+            LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(refreshReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered
+        }
     }
 }

@@ -47,6 +47,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private List<CartItem> cartItems;
     private String selectedPaymentMethod = "COD";
     private boolean isProcessing = false;
+    private String mOrderId = ""; // Lưu orderId để trả về
 
     // Map ánh xạ restaurantId -> tên nhà hàng
     private static final Map<String, String> RESTAURANT_MAP = new HashMap<>();
@@ -372,13 +373,11 @@ public class CheckoutActivity extends AppCompatActivity {
                 map.put("imageUrl", item.getImageUrl() != null ? item.getImageUrl() : "");
                 map.put("note", item.getNote() != null ? item.getNote() : "");
 
-                // QUAN TRỌNG: Lưu restaurantId vào từng item
                 if (item.getRestaurantId() != null && !item.getRestaurantId().isEmpty()) {
                     map.put("restaurantId", item.getRestaurantId());
                     String itemRestaurantName = getRestaurantNameFromId(item.getRestaurantId());
                     map.put("restaurantName", itemRestaurantName != null ? itemRestaurantName : item.getName());
                 } else {
-                    // Fallback: nếu không có restaurantId, dùng tên món
                     map.put("restaurantId", "");
                     map.put("restaurantName", item.getName());
                 }
@@ -393,9 +392,14 @@ public class CheckoutActivity extends AppCompatActivity {
         Log.d(TAG, "restaurantName: " + firstRestaurantName);
         Log.d(TAG, "Số lượng items: " + items.size());
 
+        // Gọi repository để tạo đơn hàng
         repository.createOrder(order, new FirebaseRepository.OnDataLoaded<String>() {
             @Override
             public void onSuccess(String orderId) {
+                // LƯU ORDER ID ĐỂ TRẢ VỀ
+                mOrderId = orderId;
+                Log.d(TAG, "✅✅✅ ĐÃ TẠO ĐƠN HÀNG THÀNH CÔNG! orderId: " + orderId);
+
                 String message = "Đặt hàng thành công!\n" +
                         "Tổng thanh toán: " + formatCurrency(totalAmount) + "\n" +
                         "Phương thức: " + getPaymentMethodText();
@@ -409,8 +413,11 @@ public class CheckoutActivity extends AppCompatActivity {
 
                 clearCart();
 
+                // 🔥 QUAN TRỌNG: Trả về orderId cho CartFragment
                 Intent resultIntent = new Intent();
                 resultIntent.putExtra("refresh", true);
+                resultIntent.putExtra("orderId", orderId); // <-- THÊM DÒNG NÀY
+                Log.d(TAG, "📤 Trả về orderId cho CartFragment: " + orderId);
                 setResult(RESULT_OK, resultIntent);
 
                 isProcessing = false;
@@ -419,7 +426,7 @@ public class CheckoutActivity extends AppCompatActivity {
 
             @Override
             public void onError(String error) {
-                Log.e(TAG, "Lỗi tạo đơn: " + error);
+                Log.e(TAG, "❌ Lỗi tạo đơn: " + error);
                 Toast.makeText(CheckoutActivity.this, "Lỗi: " + error, Toast.LENGTH_SHORT).show();
                 isProcessing = false;
                 btnConfirmOrder.setEnabled(true);
@@ -430,8 +437,12 @@ public class CheckoutActivity extends AppCompatActivity {
     private void clearCart() {
         String userId = getCurrentUserId();
         repository.clearCart(userId, new FirebaseRepository.OnDataLoaded<Void>() {
-            @Override public void onSuccess(Void data) {}
-            @Override public void onError(String error) {}
+            @Override public void onSuccess(Void data) {
+                Log.d(TAG, "🛒 Đã xóa giỏ hàng");
+            }
+            @Override public void onError(String error) {
+                Log.e(TAG, "Lỗi xóa giỏ hàng: " + error);
+            }
         });
     }
 

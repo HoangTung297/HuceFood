@@ -29,11 +29,11 @@ import com.example.foodorder.model.CartItem;
 import com.example.foodorder.model.Voucher;
 import com.example.foodorder.repository.FirebaseRepository;
 import com.example.foodorder.utils.ShippingFeeHelper;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -41,6 +41,7 @@ public class CartFragment extends Fragment {
 
     private static final int REQUEST_CHECKOUT = 100;
     private static final String TAG = "CART_FRAGMENT";
+    public static final String ACTION_REFRESH_NOTIFICATIONS = "REFRESH_NOTIFICATIONS";
 
     private RecyclerView rvCart;
     private TextView tvTotalPrice, tvDeliveryFee, tvDiscount, tvFinalTotal, tvEmptyCart;
@@ -52,7 +53,8 @@ public class CartFragment extends Fragment {
     private List<Voucher> voucherList;
     private FirebaseRepository repository;
     private FirebaseFirestore db;
-    private String userId = "user123";
+    private String userId = "";
+    private String userEmail = "";
     private String userName = "";
     private String userPhone = "";
     private String userAddress = "";
@@ -62,7 +64,6 @@ public class CartFragment extends Fragment {
     private double deliveryFee = 15000;
     private boolean isApplyingVoucher = false;
 
-    // BroadcastReceiver để refresh khi có món mới được thêm
     private final BroadcastReceiver refreshReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -76,7 +77,6 @@ public class CartFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Đăng ký BroadcastReceiver với LocalBroadcastManager
         IntentFilter filter = new IntentFilter(HomeActivity.ACTION_REFRESH_CART);
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(refreshReceiver, filter);
     }
@@ -88,6 +88,7 @@ public class CartFragment extends Fragment {
         setupRecyclerView();
 
         showEmptyLayoutImmediately();
+        loadUserId();
         loadCart();
         loadUserInfo();
         return view;
@@ -113,11 +114,6 @@ public class CartFragment extends Fragment {
         cartItems = new ArrayList<>();
         voucherList = new ArrayList<>();
 
-        if (getActivity() != null) {
-            userId = getActivity().getSharedPreferences("UserPrefs", 0)
-                    .getString("user_id", "user123");
-        }
-
         layoutVoucher.setOnClickListener(v -> showVoucherDialog());
         btnCheckout.setOnClickListener(v -> showCheckoutDialog());
 
@@ -126,6 +122,55 @@ public class CartFragment extends Fragment {
                 ((HomeActivity) getActivity()).navigateToHome();
             }
         });
+    }
+
+    /**
+     * Lấy userId từ email của user (ví dụ: tung@gmail.com)
+     */
+    private void loadUserId() {
+        if (getActivity() != null) {
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+
+            // Ưu tiên lấy user_email làm userId
+            userEmail = prefs.getString("user_email", "");
+            userId = prefs.getString("user_id", "");
+
+            // Nếu userId rỗng hoặc là giá trị mặc định, dùng email làm userId
+            if (userId == null || userId.isEmpty() || userId.equals("user123")) {
+                userId = userEmail;
+            }
+
+            // Nếu vẫn rỗng, dùng email mặc định
+            if (userId == null || userId.isEmpty()) {
+                userId = "tung@gmail.com";
+            }
+
+            Log.d(TAG, "📧 Loaded userId from email: " + userId);
+        }
+
+        if (userId == null || userId.isEmpty()) {
+            userId = "tung@gmail.com";
+        }
+    }
+
+    /**
+     * Lấy userId hiện tại
+     */
+    private String getCurrentUserId() {
+        if (getActivity() != null) {
+            SharedPreferences prefs = getActivity().getSharedPreferences("UserPrefs", 0);
+            String email = prefs.getString("user_email", "");
+            String id = prefs.getString("user_id", "");
+
+            // Ưu tiên dùng email làm userId
+            if (email != null && !email.isEmpty()) {
+                return email;
+            }
+            if (id != null && !id.isEmpty() && !id.equals("user123")) {
+                return id;
+            }
+        }
+        return "tung@gmail.com";
     }
 
     private void showEmptyLayoutImmediately() {
@@ -211,6 +256,12 @@ public class CartFragment extends Fragment {
     }
 
     private void loadCart() {
+        if (userId == null || userId.isEmpty() || userId.equals("user123")) {
+            loadUserId();
+        }
+
+        Log.d(TAG, "🛒 Loading cart for userId: " + userId);
+
         repository.getCart(userId, new FirebaseRepository.OnDataLoaded<List<CartItem>>() {
             @Override
             public void onSuccess(List<CartItem> data) {
@@ -473,25 +524,90 @@ public class CartFragment extends Fragment {
 
         double finalTotal = subtotal + deliveryFee - discount;
 
+        // Đảm bảo userId là email
+        String currentUserId = getCurrentUserId();
+
         Intent intent = new Intent(getActivity(), CheckoutActivity.class);
         intent.putExtra("totalAmount", subtotal);
         intent.putExtra("finalTotal", finalTotal);
         intent.putExtra("discount", discount);
         intent.putExtra("deliveryFee", deliveryFee);
         intent.putExtra("cartItems", new ArrayList<>(cartItems));
+        intent.putExtra("userId", currentUserId); // Truyền userId (email) sang CheckoutActivity
 
+        Log.d(TAG, "📤 Starting CheckoutActivity with userId: " + currentUserId);
         startActivityForResult(intent, REQUEST_CHECKOUT);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG, "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
+
         if (requestCode == REQUEST_CHECKOUT && resultCode == getActivity().RESULT_OK) {
-            if (data != null && data.getBooleanExtra("refresh", false)) {
+            if (data != null) {
+                boolean refresh = data.getBooleanExtra("refresh", false);
+                String orderId = data.getStringExtra("orderId");
+
+                Log.d(TAG, "📦 refresh=" + refresh + ", orderId=" + orderId);
+
+                if (refresh && orderId != null && !orderId.isEmpty()) {
+                    // Tạo thông báo cho đơn hàng mới
+                    createOrderNotification(orderId);
+                } else {
+                    Log.w(TAG, "⚠️ OrderId is null or empty, cannot create notification");
+                }
                 refreshData();
                 Toast.makeText(getContext(), "Đã cập nhật giỏ hàng", Toast.LENGTH_SHORT).show();
+            } else {
+                // Nếu data null, vẫn refresh
+                Log.w(TAG, "⚠️ Result data is null");
+                refreshData();
             }
         }
+    }
+
+    /**
+     * Tạo thông báo khi đặt hàng thành công
+     */
+    private void createOrderNotification(String orderId) {
+        if (getActivity() == null) {
+            Log.e(TAG, "❌ Activity is null, cannot create notification");
+            return;
+        }
+
+        // Đảm bảo userId là email
+        String currentUserId = getCurrentUserId();
+
+        Log.d(TAG, "📝 Creating notification for userId: " + currentUserId + ", orderId: " + orderId);
+
+        HashMap<String, Object> notification = new HashMap<>();
+        notification.put("userId", currentUserId); // Lưu email làm userId
+        notification.put("title", "Đặt hàng thành công 🎉");
+        notification.put("message", "Đơn hàng #" + orderId + " đã được đặt thành công. Nhà hàng sẽ xác nhận trong giây lát.");
+        notification.put("type", "order");
+        notification.put("createdAt", System.currentTimeMillis());
+        notification.put("isRead", false);
+        notification.put("orderId", orderId);
+
+        db.collection("notifications")
+                .add(notification)
+                .addOnSuccessListener(docRef -> {
+                    Log.d(TAG, "✅ Đã tạo thông báo thành công! ID: " + docRef.getId());
+                    Log.d(TAG, "📧 userId trong notification: " + currentUserId);
+
+                    // Gửi broadcast để cập nhật NotificationFragment
+                    Intent intent = new Intent(ACTION_REFRESH_NOTIFICATIONS);
+                    LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
+                    Log.d(TAG, "📡 Đã gửi broadcast REFRESH_NOTIFICATIONS");
+
+                    // Hiển thị Toast thông báo
+                    Toast.makeText(getContext(), "📬 Bạn có thông báo mới!", Toast.LENGTH_LONG).show();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "❌ Lỗi tạo thông báo: " + e.getMessage());
+                    Toast.makeText(getContext(), "Không thể tạo thông báo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     public void refreshData() {
@@ -509,7 +625,6 @@ public class CartFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Hủy đăng ký BroadcastReceiver
         try {
             LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(refreshReceiver);
         } catch (IllegalArgumentException e) {

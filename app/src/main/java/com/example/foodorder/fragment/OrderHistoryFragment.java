@@ -23,6 +23,7 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -42,9 +43,10 @@ public class OrderHistoryFragment extends Fragment {
     private boolean isLoading = false;
 
     // Map ánh xạ ID nhà hàng sang tên thật
-    private static final Map<String, String> RESTAURANT_NAME_MAP = new java.util.HashMap<>();
+    private static final Map<String, String> RESTAURANT_NAME_MAP = new LinkedHashMap<>();
     static {
         RESTAURANT_NAME_MAP.put("pho_thin", "Phở Thìn");
+        RESTAURANT_NAME_MAP.put("pho_thin_quan", "Phở Thìn");
         RESTAURANT_NAME_MAP.put("kfc", "KFC");
         RESTAURANT_NAME_MAP.put("cong_ca_phe", "Cộng Cà Phê");
         RESTAURANT_NAME_MAP.put("com_tam", "Cơm Tấm Ba Ghiền");
@@ -53,10 +55,18 @@ public class OrderHistoryFragment extends Fragment {
         RESTAURANT_NAME_MAP.put("ding_tea", "Ding Tea");
         RESTAURANT_NAME_MAP.put("mcdonalds", "McDonald's");
         RESTAURANT_NAME_MAP.put("bo_to_quan", "Bò Tơ Quán");
+        RESTAURANT_NAME_MAP.put("pizza_pepperoni", "Domino's Pizza");
+        RESTAURANT_NAME_MAP.put("dominos", "Domino's Pizza");
+        RESTAURANT_NAME_MAP.put("domino", "Domino's Pizza");
+        RESTAURANT_NAME_MAP.put("domino's", "Domino's Pizza");
+        RESTAURANT_NAME_MAP.put("dominos_pizza", "Domino's Pizza");
+        RESTAURANT_NAME_MAP.put("pho_xao_chien", "Phở Xào Chiến");
+        RESTAURANT_NAME_MAP.put("pho_xao", "Phở Xào Chiến");
     }
 
     private static final String[] FOOD_KEYWORDS = {"Phở", "Cà phê", "Cơm", "Pizza", "Burger",
-            "Gà", "Trà", "Sữa", "Bánh", "Cháo", "Bún", "Mì", "Khoai", "Coca", "Spaghetti", "Pepsi"};
+            "Gà", "Trà", "Sữa", "Bánh", "Cháo", "Bún", "Mì", "Khoai", "Coca", "Spaghetti", "Pepsi",
+            "Pepperoni", "Bạc xíu", "Khoai tây"};
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -141,30 +151,70 @@ public class OrderHistoryFragment extends Fragment {
         });
     }
 
+    // Format tên nhà hàng từ ID
+    private String formatRestaurantName(String id) {
+        if (id == null) return "Nhà hàng";
+        String[] parts = id.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (!part.isEmpty()) {
+                sb.append(Character.toUpperCase(part.charAt(0)));
+                if (part.length() > 1) {
+                    sb.append(part.substring(1).toLowerCase());
+                }
+                sb.append(" ");
+            }
+        }
+        return sb.toString().trim();
+    }
+
     // Lấy tên nhà hàng đúng từ item
     private String getCorrectRestaurantNameFromItem(Map<String, Object> item) {
-        // Lấy từ restaurantName trong item
-        String name = (String) item.get("restaurantName");
-        if (name != null && !name.isEmpty() && !isFoodName(name)) {
-            return name;
-        }
-
-        // Lấy từ restaurantId
+        // 1. ƯU TIÊN LẤY TỪ RESTAURANT ID
         String restaurantId = (String) item.get("restaurantId");
         if (restaurantId != null && !restaurantId.isEmpty()) {
             String mappedName = RESTAURANT_NAME_MAP.get(restaurantId.toLowerCase());
             if (mappedName != null) {
                 return mappedName;
             }
+            // Nếu không có trong map, trả về restaurantId đã format
+            return formatRestaurantName(restaurantId);
         }
 
-        // Lấy từ tên món (fallback)
+        // 2. LẤY TỪ RESTAURANT NAME
+        String name = (String) item.get("restaurantName");
+        if (name != null && !name.isEmpty() && !isFoodName(name)) {
+            return name;
+        }
+
+        // 3. FALLBACK: Lấy từ tên món
         String itemName = (String) item.get("name");
         if (itemName != null && !itemName.isEmpty()) {
             itemName = itemName.replaceAll("\\s+x\\d+$", "").trim();
+
+            // Xử lý đặc biệt cho Pizza
+            if (itemName.toLowerCase().contains("pizza") || itemName.toLowerCase().contains("pepperoni")) {
+                return "Domino's Pizza";
+            }
+
+            // Xử lý đặc biệt cho Cà phê
+            if (itemName.toLowerCase().contains("cà phê") || itemName.toLowerCase().contains("bạc xíu")) {
+                return "Cộng Cà Phê";
+            }
+
+            // Xử lý đặc biệt cho Phở
+            if (itemName.toLowerCase().contains("phở") || itemName.toLowerCase().contains("pho")) {
+                return "Phở Thìn";
+            }
+
+            // Xử lý đặc biệt cho Gà rán
+            if (itemName.toLowerCase().contains("gà") || itemName.toLowerCase().contains("kfc")) {
+                return "KFC";
+            }
+
             for (String keyword : FOOD_KEYWORDS) {
                 if (itemName.contains(keyword)) {
-                    return itemName + " (Quán)";
+                    return itemName;
                 }
             }
         }
@@ -282,10 +332,10 @@ public class OrderHistoryFragment extends Fragment {
                     if (!currentRestaurant.isEmpty()) {
                         itemsText.append("\n");
                     }
-                    itemsText.append("🏠 ").append(itemRestaurant).append(":\n");
+                    itemsText.append("- ").append(itemRestaurant).append(":\n");
                     currentRestaurant = itemRestaurant;
                 }
-                itemsText.append("  • ").append(name).append(" x").append(quantity).append("\n");
+                itemsText.append("  - ").append(name).append(" x").append(quantity).append("\n");
 
                 String note = (String) item.get("note");
                 if (note != null && !note.isEmpty()) {

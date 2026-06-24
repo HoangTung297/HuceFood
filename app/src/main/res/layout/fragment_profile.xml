@@ -96,7 +96,7 @@
 
                 </LinearLayout>
 
-                <!-- Email - CÓ THỂ SỬA -->
+                <!-- Email -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -190,97 +190,66 @@
             android:backgroundTint="#4CAF50"
             android:textColor="@android:color/white"
             app:cornerRadius="24dp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="24dp" />
 
-        <!-- Các mục menu -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="MENU"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#FF5722"
-            android:layout_marginBottom="12dp"
-            android:layout_marginTop="8dp" />
-
+        <!-- Ví của tôi - Card đẹp -->
         <androidx.cardview.widget.CardView
+            android:id="@+id/layoutWallet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            android:layout_marginBottom="16dp">
+            app:cardElevation="4dp"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:foreground="?attr/selectableItemBackground">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:background="@drawable/bg_wallet_gradient">
+
+                <TextView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="💳"
+                    android:textSize="28sp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_wallet_icon"
+                    android:layout_marginEnd="16dp" />
 
                 <LinearLayout
-                    android:id="@+id/layoutWallet"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="16dp"
-                    android:clickable="true"
-                    android:foreground="?attr/selectableItemBackground">
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="💳 Ví của tôi"
-                        android:textSize="15sp" />
+                        android:text="Ví của tôi"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Xem số dư và lịch sử giao dịch"
+                        android:textSize="12sp"
+                        android:textColor="#E0E0E0" />
 
                 </LinearLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#E0E0E0" />
-
-                <LinearLayout
-                    android:id="@+id/layoutOrders"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="16dp"
-                    android:clickable="true"
-                    android:foreground="?attr/selectableItemBackground">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="📦 Giỏ hàng của tôi"
-                        android:textSize="15sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#E0E0E0" />
-
-                <LinearLayout
-                    android:id="@+id/layoutOrderHistory"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="16dp"
-                    android:clickable="true"
-                    android:foreground="?attr/selectableItemBackground">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="📜 Lịch sử đơn hàng"
-                        android:textSize="15sp" />
-
-                </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textSize="28sp"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginStart="8dp" />
 
             </LinearLayout>
 

@@ -63,6 +63,8 @@ public class HomeActivity extends AppCompatActivity {
         viewPager.setAdapter(adapter);
         viewPager.setUserInputEnabled(false);
 
+
+        //thiết lập bottom navi
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
@@ -143,7 +145,7 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
     }
-
+//điều hướng
     public void navigateToProfile() {
         viewPager.setCurrentItem(4);
         bottomNavigationView.setSelectedItemId(R.id.nav_profile);

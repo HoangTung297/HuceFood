@@ -90,10 +90,13 @@ public class SearchActivity extends AppCompatActivity {
         resultAdapter = new FoodAdapter(resultList, this::onFoodClick, this::onAddToCart);
         suggestionAdapter = new FoodAdapter(suggestionList, this::onFoodClick, this::onAddToCart);
 
+        // 🔥 SỬA: Đổi từ HORIZONTAL sang VERTICAL để hiển thị danh sách dọc
         rvResults.setLayoutManager(new LinearLayoutManager(this));
         rvResults.setAdapter(resultAdapter);
 
-        rvSuggestions.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        // Trước đây: LinearLayoutManager.HORIZONTAL
+        // Bây giờ: LinearLayoutManager.VERTICAL (mặc định)
+        rvSuggestions.setLayoutManager(new LinearLayoutManager(this));
         rvSuggestions.setAdapter(suggestionAdapter);
     }
 

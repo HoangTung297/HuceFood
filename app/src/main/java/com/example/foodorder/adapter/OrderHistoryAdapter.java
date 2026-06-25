@@ -89,11 +89,13 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
             }
             tvOrderId.setText("Mã: #" + orderCode);
 
-            if (order.getCreatedAt() > 0) {
-                tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+            // ===== SỬA: Kiểm tra null thay vì > 0 =====
+            if (order.getCreatedAt() != null) {
+                tvOrderDate.setText(sdf.format(order.getCreatedAt()));
             } else {
                 tvOrderDate.setText("Đang cập nhật");
             }
+            // =========================================
 
             tvRestaurantName.setText(RestaurantHelper.getRestaurantNameFromOrder(order));
             tvTotalPrice.setText(f.format(order.getFinalTotal()) + "đ");

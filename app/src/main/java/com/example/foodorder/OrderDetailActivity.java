@@ -81,7 +81,14 @@ public class OrderDetailActivity extends AppCompatActivity {
 
         tvOrderId.setText(order.getOrderCode() != null ? order.getOrderCode() : order.getId());
         tvRestaurantName.setText(order.getRestaurantName());
-        tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+
+        // ===== SỬA: Kiểm tra null và dùng trực tiếp Date =====
+        if (order.getCreatedAt() != null) {
+            tvOrderDate.setText(sdf.format(order.getCreatedAt()));
+        } else {
+            tvOrderDate.setText("Đang cập nhật");
+        }
+        // ===================================================
 
         String paymentText = "COD";
         if ("Banking".equals(order.getPaymentMethod())) paymentText = "Chuyển khoản";

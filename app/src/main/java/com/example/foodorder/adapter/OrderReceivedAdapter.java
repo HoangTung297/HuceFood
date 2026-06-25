@@ -70,14 +70,17 @@ public class OrderReceivedAdapter extends RecyclerView.Adapter<OrderReceivedAdap
 
         void bind(Order order, OnReorderListener listener) {
             NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
 
             tvOrderId.setText("Mã đơn: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
 
-            // SỬA: Dùng long trực tiếp
-            long createdAt = order.getCreatedAt();
-            Date date = new Date(createdAt);
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-            tvOrderDate.setText(sdf.format(date));
+            // ===== SỬA: Kiểm tra null và dùng trực tiếp Date =====
+            if (order.getCreatedAt() != null) {
+                tvOrderDate.setText(sdf.format(order.getCreatedAt()));
+            } else {
+                tvOrderDate.setText("Đang cập nhật");
+            }
+            // ===================================================
 
             tvRestaurantName.setText(order.getRestaurantName());
 

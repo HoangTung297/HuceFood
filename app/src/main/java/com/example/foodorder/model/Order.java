@@ -1,5 +1,6 @@
 package com.example.foodorder.model;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -26,10 +27,14 @@ public class Order {
 
     // Trạng thái đơn hàng
     private String status; // pending, confirmed, preparing, shipping, delivered, cancelled
-    private long createdAt;
-    private long updatedAt;
-    private long deliveredAt;
-    private long cancelledAt;
+
+    // ===== THỜI GIAN DƯỚI DẠNG DATE =====
+    private Date createdAt;
+    private Date updatedAt;
+    private Date deliveredAt;
+    private Date cancelledAt;
+    private Date ratedAt;
+    // ====================================
 
     // Thanh toán
     private String paymentMethod; // COD, Banking, Momo
@@ -39,7 +44,6 @@ public class Order {
     private double rating;
     private String review;
     private boolean isRated;
-    private long ratedAt;
 
     // Ghi chú
     private String orderNote;
@@ -68,23 +72,37 @@ public class Order {
     public String getVoucherCode() { return voucherCode; }
     public double getVoucherDiscount() { return voucherDiscount; }
     public String getStatus() { return status; }
-    public long getCreatedAt() { return createdAt; }
-    public long getUpdatedAt() { return updatedAt; }
-    public long getDeliveredAt() { return deliveredAt; }
-    public long getCancelledAt() { return cancelledAt; }
+
+    // ===== GETTERS CHO DATE =====
+    public Date getCreatedAt() { return createdAt; }
+    public Date getUpdatedAt() { return updatedAt; }
+    public Date getDeliveredAt() { return deliveredAt; }
+    public Date getCancelledAt() { return cancelledAt; }
+    public Date getRatedAt() { return ratedAt; }
+    // ============================
+
     public String getPaymentMethod() { return paymentMethod; }
     public String getPaymentStatus() { return paymentStatus; }
     public double getRating() { return rating; }
     public String getReview() { return review; }
     public boolean isRated() { return isRated; }
-    public long getRatedAt() { return ratedAt; }
     public String getOrderNote() { return orderNote; }
     public String getDeliveryAddress() { return deliveryAddress; }
     public String getDeliveryPhone() { return deliveryPhone; }
     public String getDeliveryName() { return deliveryName; }
     public boolean isDeletable() { return isDeletable; }
 
-    // Helper methods
+    // Helper methods - Giữ lại để tương thích với code cũ
+    public long getCreatedAtLong() {
+        return createdAt != null ? createdAt.getTime() : 0;
+    }
+    public long getDeliveredAtLong() {
+        return deliveredAt != null ? deliveredAt.getTime() : 0;
+    }
+    public long getCancelledAtLong() {
+        return cancelledAt != null ? cancelledAt.getTime() : 0;
+    }
+
     public double getTotalPrice() { return subtotal; }
     public double getFinalTotalPrice() { return finalTotal; }
 
@@ -103,16 +121,37 @@ public class Order {
     public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
     public void setVoucherDiscount(double voucherDiscount) { this.voucherDiscount = voucherDiscount; }
     public void setStatus(String status) { this.status = status; }
-    public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
-    public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
-    public void setDeliveredAt(long deliveredAt) { this.deliveredAt = deliveredAt; }
-    public void setCancelledAt(long cancelledAt) { this.cancelledAt = cancelledAt; }
+
+    // ===== SETTERS CHO DATE =====
+    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(Date updatedAt) { this.updatedAt = updatedAt; }
+    public void setDeliveredAt(Date deliveredAt) { this.deliveredAt = deliveredAt; }
+    public void setCancelledAt(Date cancelledAt) { this.cancelledAt = cancelledAt; }
+    public void setRatedAt(Date ratedAt) { this.ratedAt = ratedAt; }
+    // ============================
+
+    // Setter cho long (tương thích ngược)
+    public void setCreatedAt(long createdAt) {
+        this.createdAt = new Date(createdAt);
+    }
+    public void setUpdatedAt(long updatedAt) {
+        this.updatedAt = new Date(updatedAt);
+    }
+    public void setDeliveredAt(long deliveredAt) {
+        this.deliveredAt = deliveredAt > 0 ? new Date(deliveredAt) : null;
+    }
+    public void setCancelledAt(long cancelledAt) {
+        this.cancelledAt = cancelledAt > 0 ? new Date(cancelledAt) : null;
+    }
+    public void setRatedAt(long ratedAt) {
+        this.ratedAt = ratedAt > 0 ? new Date(ratedAt) : null;
+    }
+
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
     public void setRating(double rating) { this.rating = rating; }
     public void setReview(String review) { this.review = review; }
     public void setRated(boolean rated) { isRated = rated; }
-    public void setRatedAt(long ratedAt) { this.ratedAt = ratedAt; }
     public void setOrderNote(String orderNote) { this.orderNote = orderNote; }
     public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }
     public void setDeliveryPhone(String deliveryPhone) { this.deliveryPhone = deliveryPhone; }
@@ -121,7 +160,6 @@ public class Order {
 
     // ==================== TRẠNG THÁI ====================
 
-    // Lấy text trạng thái hiển thị
     public String getStatusText() {
         switch (status) {
             case "pending": return "⏳ Chờ xác nhận";
@@ -134,7 +172,6 @@ public class Order {
         }
     }
 
-    // Lấy màu trạng thái
     public int getStatusColor() {
         switch (status) {
             case "pending": return 0xFFFF9800;
@@ -147,22 +184,18 @@ public class Order {
         }
     }
 
-    // Kiểm tra có thể hủy đơn không
     public boolean isCancellable() {
         return "pending".equals(status) || "confirmed".equals(status);
     }
 
-    // Kiểm tra có thể đánh giá không
     public boolean canRate() {
         return "delivered".equals(status) && !isRated;
     }
 
-    // Kiểm tra có thể đặt lại không
     public boolean canReorder() {
         return "delivered".equals(status);
     }
 
-    // Lấy thông tin tóm tắt
     public String getOrderSummary() {
         StringBuilder sb = new StringBuilder();
         if (items != null) {
@@ -180,7 +213,6 @@ public class Order {
         return sb.toString();
     }
 
-    // Lấy phương thức thanh toán hiển thị
     public String getPaymentMethodText() {
         switch (paymentMethod) {
             case "COD": return "💵 Thanh toán khi nhận hàng";

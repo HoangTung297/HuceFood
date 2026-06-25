@@ -255,12 +255,11 @@ public class OrderReceivedFragment extends Fragment {
         String restaurantNames = getUniqueRestaurantNames(order);
         tvRestaurantName.setText(restaurantNames);
 
-        if (order.getCreatedAt() > 0) {
-            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+        if (order.getCreatedAt() != null) {
+            tvOrderDate.setText(sdf.format(order.getCreatedAt()));
         } else {
             tvOrderDate.setText("Đang cập nhật");
         }
-
         String paymentMethod = order.getPaymentMethod();
         if ("COD".equals(paymentMethod)) {
             tvPaymentMethod.setText("💵 Thanh toán khi nhận hàng");
@@ -442,8 +441,8 @@ public class OrderReceivedFragment extends Fragment {
                 }
                 tvOrderId.setText("Mã: #" + orderCode);
 
-                if (order.getCreatedAt() > 0) {
-                    tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+                if (order.getCreatedAt() != null) {
+                    tvOrderDate.setText(sdf.format(order.getCreatedAt()));
                 } else {
                     tvOrderDate.setText("Đang cập nhật");
                 }

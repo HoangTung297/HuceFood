@@ -172,8 +172,10 @@ public class DeliveringFragment extends Fragment {
             String restaurantNames = getUniqueRestaurantNames(order);
             tvRestaurantName.setText(restaurantNames);
 
-            if (order.getCreatedAt() > 0) {
-                tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+            if (order.getCreatedAt() != null) {
+                tvOrderDate.setText(sdf.format(order.getCreatedAt()));
+            } else {
+                tvOrderDate.setText("Đang cập nhật");
             }
 
             String paymentMethod = order.getPaymentMethod();
@@ -475,8 +477,8 @@ public class DeliveringFragment extends Fragment {
                     btnReceived.setVisibility(View.GONE);
                 }
 
-                if (order.getCreatedAt() > 0) {
-                    tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+                if (order.getCreatedAt() != null) {
+                    tvOrderDate.setText(sdf.format(order.getCreatedAt()));
                 } else {
                     tvOrderDate.setText("Đang cập nhật");
                 }

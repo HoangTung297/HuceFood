@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Date;
 
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -47,7 +48,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private List<CartItem> cartItems;
     private String selectedPaymentMethod = "COD";
     private boolean isProcessing = false;
-    private String mOrderId = ""; // Lưu orderId để trả về
+    private String mOrderId = "";
 
     // Map ánh xạ restaurantId -> tên nhà hàng
     private static final Map<String, String> RESTAURANT_MAP = new HashMap<>();
@@ -317,7 +318,13 @@ public class CheckoutActivity extends AppCompatActivity {
 
         Order order = new Order();
         order.setUserId(userId);
-        order.setOrderCode("ORD" + System.currentTimeMillis());
+
+        // ===== TẠO ORDER CODE =====
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String orderCode = "ORD" + timestamp;
+        order.setOrderCode(orderCode);
+        Log.d(TAG, "📌 OrderCode: " + orderCode);
+        // ===========================
 
         // Lấy thông tin từ cart item đầu tiên
         String firstRestaurantId = null;
@@ -358,8 +365,8 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setFinalTotal(totalAmount);
 
         order.setStatus("pending");
-        order.setCreatedAt(System.currentTimeMillis());
-        order.setUpdatedAt(System.currentTimeMillis());
+        order.setCreatedAt(new Date());
+        order.setUpdatedAt(new Date());
 
         // Tạo danh sách items với đầy đủ restaurantId
         List<Map<String, Object>> items = new ArrayList<>();
@@ -388,23 +395,34 @@ public class CheckoutActivity extends AppCompatActivity {
         order.setItems(items);
 
         Log.d(TAG, "===== TẠO ĐƠN HÀNG =====");
+        Log.d(TAG, "OrderCode: " + orderCode);
         Log.d(TAG, "restaurantId: " + firstRestaurantId);
         Log.d(TAG, "restaurantName: " + firstRestaurantName);
         Log.d(TAG, "Số lượng items: " + items.size());
+        Log.d(TAG, "📦 Delivery Name: " + name);
+        Log.d(TAG, "📞 Delivery Phone: " + phone);
+        Log.d(TAG, "📍 Delivery Address: " + address);
+        Log.d(TAG, "isPaid: " + isPaid);
+
+        // ===== LƯU isPaid VÀO BIẾN FINAL ĐỂ DÙNG TRONG LAMBDA =====
+        final boolean isPaidFinal = isPaid;
+        final String orderIdFinal = orderCode;
+        // =========================================================
 
         // Gọi repository để tạo đơn hàng
         repository.createOrder(order, new FirebaseRepository.OnDataLoaded<String>() {
             @Override
             public void onSuccess(String orderId) {
-                // LƯU ORDER ID ĐỂ TRẢ VỀ
                 mOrderId = orderId;
                 Log.d(TAG, "✅✅✅ ĐÃ TẠO ĐƠN HÀNG THÀNH CÔNG! orderId: " + orderId);
+                Log.d(TAG, "📌 Document ID = OrderCode: " + orderId);
 
                 String message = "Đặt hàng thành công!\n" +
+                        "Mã đơn: " + orderId + "\n" +
                         "Tổng thanh toán: " + formatCurrency(totalAmount) + "\n" +
                         "Phương thức: " + getPaymentMethodText();
 
-                if (isPaid) {
+                if (isPaidFinal) {
                     message = "✅ Thanh toán thành công!\n" +
                             "Đã trừ " + formatCurrency(totalAmount) + " từ ví.\n" +
                             message;
@@ -413,10 +431,9 @@ public class CheckoutActivity extends AppCompatActivity {
 
                 clearCart();
 
-                // 🔥 QUAN TRỌNG: Trả về orderId cho CartFragment
                 Intent resultIntent = new Intent();
                 resultIntent.putExtra("refresh", true);
-                resultIntent.putExtra("orderId", orderId); // <-- THÊM DÒNG NÀY
+                resultIntent.putExtra("orderId", orderId);
                 Log.d(TAG, "📤 Trả về orderId cho CartFragment: " + orderId);
                 setResult(RESULT_OK, resultIntent);
 

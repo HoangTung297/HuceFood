@@ -11,6 +11,7 @@ import com.example.foodorder.R;
 import com.example.foodorder.model.Order;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -88,8 +89,14 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.ViewHolder> 
 
             tvOrderId.setText("Mã: " + (order.getOrderCode() != null ? order.getOrderCode() : order.getId()));
 
+            // ===== SỬA: Kiểm tra null và dùng trực tiếp Date =====
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-            tvOrderDate.setText(sdf.format(new java.util.Date(order.getCreatedAt())));
+            if (order.getCreatedAt() != null) {
+                tvOrderDate.setText(sdf.format(order.getCreatedAt()));
+            } else {
+                tvOrderDate.setText("Đang cập nhật");
+            }
+            // ===================================================
 
             tvRestaurantName.setText(order.getRestaurantName());
 

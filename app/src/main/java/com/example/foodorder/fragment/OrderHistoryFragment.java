@@ -283,11 +283,13 @@ public class OrderHistoryFragment extends Fragment {
         String restaurantNames = getUniqueRestaurantNames(order);
         tvRestaurantName.setText(restaurantNames);
 
-        if (order.getCreatedAt() > 0) {
-            tvOrderDate.setText(sdf.format(new Date(order.getCreatedAt())));
+        // ===== SỬA: Kiểm tra null thay vì > 0 =====
+        if (order.getCreatedAt() != null) {
+            tvOrderDate.setText(sdf.format(order.getCreatedAt()));
         } else {
             tvOrderDate.setText("Đang cập nhật");
         }
+        // =========================================
 
         String paymentMethod = order.getPaymentMethod();
         if ("COD".equals(paymentMethod)) {
